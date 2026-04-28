@@ -8,7 +8,7 @@ type Props = {
   collapsed?: boolean;
 };
 
-export function MessageView({ message, collapsed }: Props): React.ReactElement | null {
+export function MessageView({ message }: Props): React.ReactElement | null {
   if (!message.visible) {
     return null;
   }
@@ -29,18 +29,18 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
     const isThinking = Boolean(message.meta?.asThinking);
     const content = (message.content || "").trim();
 
-    if (isThinking && collapsed) {
-      const summary = firstNonEmptyLine(content) || "(thinking…)";
+    if (isThinking) {
+      const summary = firstNonEmptyLine(content) || "(thinking...)";
       return (
         <Box marginY={0}>
-          <Text dimColor>▸ Assistant (thinking) · {truncate(summary, 100)}</Text>
+          <StatusLine bulletColor="gray" name="Thinking" params={truncate(summary, 100)} />
         </Box>
       );
     }
 
     return (
       <Box flexDirection="column" marginY={0}>
-        <Text color="cyan" bold>{isThinking ? "Assistant (thinking)" : "Assistant"}</Text>
+        <Text color="cyan" bold>Assistant</Text>
         <Box marginLeft={2} flexDirection="column">
           {content ? <Text>{renderMarkdown(content)}</Text> : null}
         </Box>
@@ -49,15 +49,14 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
   }
 
   if (message.role === "tool") {
-    const meta = message.meta;
-    const fnName =
-      meta?.function && typeof (meta.function as { name?: unknown }).name === "string"
-        ? ((meta.function as { name: string }).name)
-        : "tool";
-    const params = meta?.paramsMd ?? "";
+    const summary = buildToolSummary(message);
     return (
       <Box marginY={0}>
-        <Text color="yellow">▸ {fnName}{params ? `: ${truncate(params, 120)}` : ""}</Text>
+        <StatusLine
+          bulletColor={summary.ok ? "green" : "red"}
+          name={formatStatusName(summary.name)}
+          params={truncate(firstNonEmptyLine(summary.params), 120)}
+        />
       </Box>
     );
   }
@@ -83,6 +82,61 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
   return null;
 }
 
+function StatusLine({
+  bulletColor,
+  name,
+  params
+}: {
+  bulletColor: "gray" | "green" | "red";
+  name: string;
+  params: string;
+}): React.ReactElement {
+  return (
+    <Text wrap="truncate-end">
+      {[
+        <Text key="bullet" color={bulletColor}>•</Text>,
+        " ",
+        <Text key="name" bold>{name}</Text>,
+        params ? <Text key="params" color="white">{`  ${params}`}</Text> : null
+      ]}
+    </Text>
+  );
+}
+
+function buildToolSummary(message: SessionMessage): { name: string; params: string; ok: boolean } {
+  const payload = parseToolPayload(message.content);
+  const metaFunctionName =
+    message.meta?.function && typeof (message.meta.function as { name?: unknown }).name === "string"
+      ? (message.meta.function as { name: string }).name
+      : null;
+
+  return {
+    name: payload.name || metaFunctionName || "tool",
+    params: typeof message.meta?.paramsMd === "string" ? message.meta.paramsMd.trim() : "",
+    ok: payload.ok !== false
+  };
+}
+
+function parseToolPayload(content: string | null): { name: string | null; ok: boolean } {
+  if (!content) {
+    return { name: null, ok: true };
+  }
+
+  try {
+    const parsed = JSON.parse(content) as { name?: unknown; ok?: unknown };
+    return {
+      name: typeof parsed.name === "string" && parsed.name.trim() ? parsed.name.trim() : null,
+      ok: parsed.ok !== false
+    };
+  } catch {
+    return { name: null, ok: true };
+  }
+}
+
+function formatStatusName(value: string): string {
+  return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : "Tool";
+}
+
 function truncate(value: string, max: number): string {
   if (value.length <= max) {
     return value;
@@ -92,7 +146,7 @@ function truncate(value: string, max: number): string {
 
 function firstNonEmptyLine(value: string): string {
   for (const line of value.split(/\r?\n/)) {
-    const trimmed = line.trim();
+    const trimmed = line.trim().replace(/\s+/g, " ");
     if (trimmed) {
       return trimmed;
     }

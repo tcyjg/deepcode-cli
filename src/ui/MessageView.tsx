@@ -56,7 +56,7 @@ export function MessageView({ message }: Props): React.ReactElement | null {
         <StatusLine
           bulletColor={summary.ok ? "green" : "red"}
           name={formatStatusName(summary.name)}
-          params={truncate(firstNonEmptyLine(summary.params), 120)}
+          params={formatToolStatusParams(summary)}
         />
         {diffLines.length > 0 ? <DiffPreview lines={diffLines} /> : null}
       </Box>
@@ -103,6 +103,11 @@ function StatusLine({
       ]}
     </Text>
   );
+}
+
+function formatToolStatusParams(summary: ToolSummary): string {
+  const params = firstNonEmptyLine(summary.params);
+  return summary.name.toLowerCase() === "bash" ? params : truncate(params, 120);
 }
 
 type ToolSummary = {

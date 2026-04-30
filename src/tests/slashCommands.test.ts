@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   buildSlashCommands,
   filterSlashCommands,
-  findExactSlashCommand
+  findExactSlashCommand,
+  formatSlashCommandDescription,
+  formatSlashCommandLabel
 } from "../ui/slashCommands";
 import type { SkillInfo } from "../session";
 
@@ -17,13 +19,13 @@ test("buildSlashCommands prefixes skills before built-ins", () => {
   assert.equal(items[0].kind, "skill");
   assert.equal(items[0].name, "skill-writer");
   const builtinNames = items.filter((i) => i.kind !== "skill").map((i) => i.name);
-  assert.deepEqual(builtinNames, ["new", "resume", "exit"]);
+  assert.deepEqual(builtinNames, ["skills", "new", "resume", "exit"]);
 });
 
 test("filterSlashCommands matches partial prefixes", () => {
   const items = buildSlashCommands(skills);
   const matched = filterSlashCommands(items, "/skil").map((i) => i.name);
-  assert.deepEqual(matched, ["skill-writer"]);
+  assert.deepEqual(matched, ["skill-writer", "skills"]);
 });
 
 test("filterSlashCommands returns all entries on bare slash", () => {
@@ -49,10 +51,31 @@ test("findExactSlashCommand returns built-in /new", () => {
   assert.equal(item?.kind, "new");
 });
 
+test("findExactSlashCommand returns built-in /skills", () => {
+  const items = buildSlashCommands(skills);
+  const item = findExactSlashCommand(items, "/skills");
+  assert.ok(item);
+  assert.equal(item?.kind, "skills");
+});
+
 test("findExactSlashCommand returns the matching skill", () => {
   const items = buildSlashCommands(skills);
   const item = findExactSlashCommand(items, "/code-review");
   assert.ok(item);
   assert.equal(item?.kind, "skill");
   assert.equal(item?.skill?.name, "code-review");
+});
+
+test("formatSlashCommandDescription keeps descriptions on one line", () => {
+  assert.equal(formatSlashCommandDescription("Line one\n  line two"), "Line one line two");
+});
+
+test("formatSlashCommandLabel marks loaded skills", () => {
+  const items = buildSlashCommands([
+    { name: "loaded", path: "/skills/loaded/SKILL.md", description: "Loaded skill", isLoaded: true },
+    { name: "fresh", path: "/skills/fresh/SKILL.md", description: "Fresh skill" }
+  ]);
+
+  assert.equal(formatSlashCommandLabel(items[0]), "/loaded ✓");
+  assert.equal(formatSlashCommandLabel(items[1]), "/fresh");
 });

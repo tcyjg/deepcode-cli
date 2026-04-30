@@ -1,6 +1,6 @@
 import type { SkillInfo } from "../session";
 
-export type SlashCommandKind = "skill" | "new" | "resume" | "exit";
+export type SlashCommandKind = "skill" | "skills" | "new" | "resume" | "exit";
 
 export type SlashCommandItem = {
   kind: SlashCommandKind;
@@ -11,6 +11,12 @@ export type SlashCommandItem = {
 };
 
 export const BUILTIN_SLASH_COMMANDS: SlashCommandItem[] = [
+  {
+    kind: "skills",
+    name: "skills",
+    label: "/skills",
+    description: "List available skills"
+  },
   {
     kind: "new",
     name: "new",
@@ -64,5 +70,14 @@ export function findExactSlashCommand(
     return null;
   }
   const query = token.slice(1);
-  return items.find((item) => item.name === query) ?? null;
+  const matches = items.filter((item) => item.name === query);
+  return matches.find((item) => item.kind !== "skill") ?? matches[0] ?? null;
+}
+
+export function formatSlashCommandDescription(description: string): string {
+  return (description || "(no description)").trim().replace(/\s+/g, " ");
+}
+
+export function formatSlashCommandLabel(item: SlashCommandItem): string {
+  return item.kind === "skill" && item.skill?.isLoaded ? `${item.label} ✓` : item.label;
 }

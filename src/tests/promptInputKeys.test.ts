@@ -2,12 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   IMAGE_ATTACHMENT_CLEAR_HINT,
+  addUniqueSkill,
   formatImageAttachmentStatus,
+  formatSelectedSkillsStatus,
   getPromptCursorPlacement,
   isClearImageAttachmentsShortcut,
   parseTerminalInput,
+  removeCurrentSlashToken,
+  toggleSkillSelection,
   renderBufferWithCursor
 } from "../ui/PromptInput";
+import type { SkillInfo } from "../session";
 
 test("parseTerminalInput treats DEL bytes as backspace", () => {
   const { input, key } = parseTerminalInput("\u007F");
@@ -78,6 +83,19 @@ test("formatImageAttachmentStatus formats the image count label", () => {
   assert.equal(formatImageAttachmentStatus(1), "📎 1 image attached");
   assert.equal(formatImageAttachmentStatus(2), "📎 2 images attached");
   assert.equal(IMAGE_ATTACHMENT_CLEAR_HINT, "ctrl+x clear images");
+});
+
+test("selected skill helpers format, dedupe, toggle, and clear slash tokens", () => {
+  const skill: SkillInfo = { name: "skill-writer", path: "/skills/skill-writer/SKILL.md", description: "Write skills" };
+  const other: SkillInfo = { name: "code-review", path: "/skills/code-review/SKILL.md", description: "Review code" };
+
+  assert.equal(formatSelectedSkillsStatus([]), "");
+  assert.equal(formatSelectedSkillsStatus([skill, other]), "⚡ skill-writer, code-review");
+  assert.deepEqual(addUniqueSkill([skill], skill), [skill]);
+  assert.deepEqual(addUniqueSkill([skill], other), [skill, other]);
+  assert.deepEqual(toggleSkillSelection([skill], skill), []);
+  assert.deepEqual(toggleSkillSelection([skill], other), [skill, other]);
+  assert.deepEqual(removeCurrentSlashToken({ text: "use /skill-writer", cursor: 17 }), { text: "use ", cursor: 4 });
 });
 
 test("renderBufferWithCursor hides the simulated cursor when unfocused", () => {

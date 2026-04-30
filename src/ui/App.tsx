@@ -87,7 +87,6 @@ export function App({ projectRoot }: AppProps): React.ReactElement {
   }, [busy]);
 
   useEffect(() => {
-    void refreshSkills();
     refreshSessionsList();
     const list = sessionManager.listSessions();
     if (list.length > 0) {
@@ -97,6 +96,9 @@ export function App({ projectRoot }: AppProps): React.ReactElement {
       setStatusLine(buildStatusLine(latest));
       setRunningProcesses(latest.processes);
       setActiveStatus(latest.status);
+      void refreshSkills(latest.id);
+    } else {
+      void refreshSkills();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -147,12 +149,15 @@ export function App({ projectRoot }: AppProps): React.ReactElement {
       const prompt: UserPromptContent = {
         text: submission.text,
         imageUrls: submission.imageUrls,
-        skills: submission.selectedSkill ? [submission.selectedSkill] : undefined
+        skills: submission.selectedSkills && submission.selectedSkills.length > 0
+          ? submission.selectedSkills
+          : undefined
       };
 
       const trimmedText = (submission.text ?? "").trim();
+      const selectedSkillNames = submission.selectedSkills?.map((skill) => skill.name).filter(Boolean) ?? [];
       const userDisplayContent = trimmedText
-        || (submission.selectedSkill ? `Use skill: ${submission.selectedSkill.name}` : "")
+        || (selectedSkillNames.length > 0 ? `Use skills: ${selectedSkillNames.join(", ")}` : "")
         || (submission.imageUrls.length > 0 ? "[Image]" : "");
 
       if (userDisplayContent) {

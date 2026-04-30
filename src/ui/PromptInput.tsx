@@ -24,7 +24,9 @@ import {
   SlashCommandItem,
   buildSlashCommands,
   filterSlashCommands,
-  findExactSlashCommand
+  findExactSlashCommand,
+  formatSlashCommandDescription,
+  formatSlashCommandLabel
 } from "./slashCommands";
 import { readClipboardImage } from "./clipboard";
 import type { SkillInfo } from "../session";
@@ -32,7 +34,7 @@ import type { SkillInfo } from "../session";
 export type PromptSubmission = {
   text: string;
   imageUrls: string[];
-  selectedSkill?: SkillInfo;
+  selectedSkills?: SkillInfo[];
   command?: "new" | "resume" | "exit";
 };
 
@@ -95,9 +97,12 @@ export function PromptInput({
   const screenWidth = Math.max(20, stdout?.columns ?? 80);
   const [buffer, setBuffer] = useState<PromptBufferState>(EMPTY_BUFFER);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<SkillInfo[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [pendingExit, setPendingExit] = useState(false);
   const [menuIndex, setMenuIndex] = useState(0);
+  const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
+  const [skillsDropdownIndex, setSkillsDropdownIndex] = useState(0);
   const [historyCursor, setHistoryCursor] = useState(-1);
   const [draftBeforeHistory, setDraftBeforeHistory] = useState<string | null>(null);
   const [hasTerminalFocus, setHasTerminalFocus] = useState(true);
@@ -106,7 +111,7 @@ export function PromptInput({
 
   const slashItems = useMemo(() => buildSlashCommands(skills), [skills]);
   const slashToken = getCurrentSlashToken(buffer);
-  const slashMenu = slashToken ? filterSlashCommands(slashItems, slashToken) : [];
+  const slashMenu = showSkillsDropdown ? [] : slashToken ? filterSlashCommands(slashItems, slashToken) : [];
   const showMenu = slashMenu.length > 0;
   const promptHistoryKey = useMemo(() => promptHistory.join("\0"), [promptHistory]);
   const promptPrefix = busy ? `${SPINNER_FRAMES[spinnerIndex]} ` : "❯ ";
@@ -147,6 +152,12 @@ export function PromptInput({
   }, [slashMenu, showMenu, menuIndex]);
 
   useEffect(() => {
+    if (skillsDropdownIndex >= skills.length) {
+      setSkillsDropdownIndex(Math.max(0, skills.length - 1));
+    }
+  }, [skills.length, skillsDropdownIndex]);
+
+  useEffect(() => {
     if (!statusMessage) {
       return;
     }
@@ -174,6 +185,10 @@ export function PromptInput({
     }
 
     if (key.escape) {
+      if (showSkillsDropdown) {
+        setShowSkillsDropdown(false);
+        return;
+      }
       if (busy) {
         onInterrupt();
         setStatusMessage("Interrupting…");
@@ -216,6 +231,28 @@ export function PromptInput({
 
     if (historyCursor !== -1 && !key.upArrow && !key.downArrow) {
       exitHistoryBrowsing();
+    }
+
+    if (showSkillsDropdown) {
+      if (key.upArrow) {
+        setSkillsDropdownIndex((idx) => (idx - 1 + Math.max(skills.length, 1)) % Math.max(skills.length, 1));
+        return;
+      }
+      if (key.downArrow) {
+        setSkillsDropdownIndex((idx) => (idx + 1) % Math.max(skills.length, 1));
+        return;
+      }
+      if ((input === " " && !key.ctrl && !key.meta) || (key.return && !key.shift && !key.meta)) {
+        const skill = skills[skillsDropdownIndex];
+        if (skill) {
+          toggleSelectedSkill(skill);
+        }
+        return;
+      }
+      if (key.tab) {
+        setShowSkillsDropdown(false);
+        return;
+      }
     }
 
     if (key.ctrl && (input === "v" || input === "V")) {
@@ -436,21 +473,30 @@ export function PromptInput({
     }
 
     if (item.kind === "skill" && item.skill) {
-      onSubmit({ text: "", imageUrls: [], selectedSkill: item.skill });
-      setBuffer(EMPTY_BUFFER);
-      setImageUrls([]);
+      addSelectedSkill(item.skill);
+      clearSlashToken();
+      setShowSkillsDropdown(false);
+      return;
+    }
+    if (item.kind === "skills") {
+      clearSlashToken();
+      setShowSkillsDropdown(true);
       return;
     }
     if (item.kind === "new") {
       onSubmit({ text: "", imageUrls: [], command: "new" });
       setBuffer(EMPTY_BUFFER);
       setImageUrls([]);
+      setSelectedSkills([]);
+      setShowSkillsDropdown(false);
       return;
     }
     if (item.kind === "resume") {
       onSubmit({ text: "", imageUrls: [], command: "resume" });
       setBuffer(EMPTY_BUFFER);
       setImageUrls([]);
+      setSelectedSkills([]);
+      setShowSkillsDropdown(false);
       return;
     }
     if (item.kind === "exit") {
@@ -466,7 +512,7 @@ export function PromptInput({
     }
 
     const trimmed = buffer.text.trim();
-    if (!trimmed && imageUrls.length === 0) {
+    if (!trimmed && imageUrls.length === 0 && selectedSkills.length === 0) {
       return;
     }
 
@@ -480,13 +526,34 @@ export function PromptInput({
 
     onSubmit({
       text: buffer.text,
-      imageUrls
+      imageUrls,
+      selectedSkills
     });
     setBuffer(EMPTY_BUFFER);
     setImageUrls([]);
+    setSelectedSkills([]);
+    setShowSkillsDropdown(false);
+  }
+
+  function addSelectedSkill(skill: SkillInfo): void {
+    setSelectedSkills((prev) => addUniqueSkill(prev, skill));
+  }
+
+  function toggleSelectedSkill(skill: SkillInfo): void {
+    setSelectedSkills((prev) => toggleSkillSelection(prev, skill));
+  }
+
+  function clearSlashToken(): void {
+    exitHistoryBrowsing();
+    setBuffer((state) => removeCurrentSlashToken(state));
   }
 
   const divider = "─".repeat(screenWidth);
+  const visibleSkillStart = Math.min(
+    Math.max(0, skillsDropdownIndex - 7),
+    Math.max(0, skills.length - 8)
+  );
+  const visibleSkills = skills.slice(visibleSkillStart, visibleSkillStart + 8);
 
   return (
     <Box flexDirection="column">
@@ -496,13 +563,47 @@ export function PromptInput({
           <Text dimColor>{` (${IMAGE_ATTACHMENT_CLEAR_HINT})`}</Text>
         </Box>
       ) : null}
+      {selectedSkills.length > 0 ? (
+        <Box>
+          <Text color="magenta" wrap="truncate-end">{formatSelectedSkillsStatus(selectedSkills)}</Text>
+          <Text dimColor> (use /skills to edit)</Text>
+        </Box>
+      ) : null}
+      {showSkillsDropdown ? (
+        <Box flexDirection="column" marginBottom={1}>
+          <Text color="magenta" bold>Select Skills</Text>
+          {skills.length === 0 ? (
+            <Text dimColor>No skills found</Text>
+          ) : (
+            visibleSkills.map((skill, idx) => {
+              const skillIndex = visibleSkillStart + idx;
+              const selected = isSkillSelected(selectedSkills, skill);
+              const active = skillIndex === skillsDropdownIndex;
+              return (
+                <Text key={skill.path || skill.name} color={active ? "cyanBright" : undefined} wrap="truncate-end">
+                  {active ? "› " : "  "}
+                  {selected ? "●" : "○"}{" "}
+                  <Text bold>{skill.name}</Text>
+                  {skill.isLoaded ? <Text color="green">  ✓</Text> : null}
+                  <Text dimColor>{`  ${skill.path}`}</Text>
+                </Text>
+              );
+            })
+          )}
+          {visibleSkillStart > 0 ? <Text dimColor>… {visibleSkillStart} above</Text> : null}
+          {visibleSkillStart + visibleSkills.length < skills.length ? (
+            <Text dimColor>… {skills.length - visibleSkillStart - visibleSkills.length} more</Text>
+          ) : null}
+          <Text dimColor>space toggle · enter toggle · esc close</Text>
+        </Box>
+      ) : null}
       {showMenu ? (
         <Box flexDirection="column" marginBottom={1}>
           {slashMenu.slice(0, 8).map((item, idx) => (
-            <Text key={item.label} color={idx === menuIndex ? "cyanBright" : undefined}>
+            <Text key={item.label} color={idx === menuIndex ? "cyanBright" : undefined} wrap="truncate-end">
               {idx === menuIndex ? "› " : "  "}
-              <Text bold>{item.label}</Text>
-              <Text dimColor>  {item.description}</Text>
+              <Text bold>{formatSlashCommandLabel(item)}</Text>
+              <Text dimColor>  {formatSlashCommandDescription(item.description)}</Text>
             </Text>
           ))}
           {slashMenu.length > 8 ? <Text dimColor>… {slashMenu.length - 8} more</Text> : null}
@@ -528,6 +629,46 @@ export function formatImageAttachmentStatus(count: number): string {
     return "";
   }
   return `📎 ${count} image${count === 1 ? "" : "s"} attached`;
+}
+
+export function formatSelectedSkillsStatus(skills: SkillInfo[]): string {
+  const names = skills.map((skill) => skill.name).filter(Boolean);
+  if (names.length === 0) {
+    return "";
+  }
+  return `⚡ ${names.join(", ")}`;
+}
+
+export function isSkillSelected(skills: SkillInfo[], skill: SkillInfo): boolean {
+  return skills.some((item) => item.name === skill.name);
+}
+
+export function addUniqueSkill(skills: SkillInfo[], skill: SkillInfo): SkillInfo[] {
+  if (isSkillSelected(skills, skill)) {
+    return skills;
+  }
+  return [...skills, skill];
+}
+
+export function toggleSkillSelection(skills: SkillInfo[], skill: SkillInfo): SkillInfo[] {
+  return isSkillSelected(skills, skill)
+    ? skills.filter((item) => item.name !== skill.name)
+    : [...skills, skill];
+}
+
+export function removeCurrentSlashToken(state: PromptBufferState): PromptBufferState {
+  let start = state.cursor;
+  while (start > 0 && !/\s/.test(state.text[start - 1] ?? "")) {
+    start -= 1;
+  }
+
+  const token = state.text.slice(start, state.cursor);
+  if (!token.startsWith("/")) {
+    return state;
+  }
+
+  const text = `${state.text.slice(0, start)}${state.text.slice(state.cursor)}`;
+  return { text, cursor: start };
 }
 
 export function isClearImageAttachmentsShortcut(input: string, key: Pick<InputKey, "ctrl">): boolean {

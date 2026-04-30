@@ -199,6 +199,54 @@ test("SessionManager normalizes legacy sessions without activeTokens to zero", (
   assert.equal(manager.getSession("legacy-session")?.activeTokens, 0);
 });
 
+test("SessionManager marks skills loaded from existing session messages", async () => {
+  const workspace = createTempDir("deepcode-loaded-skills-workspace-");
+  const home = createTempDir("deepcode-loaded-skills-home-");
+  process.env.HOME = home;
+
+  const skillDir = path.join(home, ".agents", "skills", "lessweb-starter");
+  fs.mkdirSync(skillDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(skillDir, "SKILL.md"),
+    "---\nname: lessweb-starter\ndescription: Create Lessweb projects\n---\n# Lessweb Starter\n",
+    "utf8"
+  );
+
+  const projectCode = workspace.replace(/[\\/]/g, "-").replace(/:/g, "");
+  const projectDir = path.join(home, ".deepcode", "projects", projectCode);
+  fs.mkdirSync(projectDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, "loaded-session.jsonl"),
+    `${JSON.stringify({
+      id: "skill-message",
+      sessionId: "loaded-session",
+      role: "system",
+      content: "Use the skill document below",
+      contentParams: null,
+      messageParams: null,
+      compacted: false,
+      visible: true,
+      createTime: "2026-01-01T00:00:00.000Z",
+      updateTime: "2026-01-01T00:00:00.000Z",
+      meta: {
+        skill: {
+          name: "lessweb-starter",
+          path: "~/.agents/skills/lessweb-starter/SKILL.md",
+          description: "Create Lessweb projects",
+          isLoaded: true
+        }
+      }
+    })}\n`,
+    "utf8"
+  );
+
+  const manager = createSessionManager(workspace, "machine-id-loaded-skills");
+  const loadedSkill = (await manager.listSkills("loaded-session"))
+    .find((skill) => skill.name === "lessweb-starter");
+
+  assert.equal(loadedSkill?.isLoaded, true);
+});
+
 test("createSession reports a new prompt with the machineId token", async () => {
   const workspace = createTempDir("deepcode-session-workspace-");
   const home = createTempDir("deepcode-session-home-");

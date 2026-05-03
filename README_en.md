@@ -99,7 +99,7 @@ Yes. Just set `env.BASE_URL` in `~/.deepcode/settings.json` to an OpenAI-compati
 
 ## Getting Help
 
-- Report bugs or request features on GitHub Issues (https://github.com/lessweb/deepcode-cli/issues).
+- Report bugs or request features on GitHub Issues (https://github.com/lessweb/deepcode-cli/issues ).
 
 ## License
 

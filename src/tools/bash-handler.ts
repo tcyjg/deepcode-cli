@@ -1,5 +1,13 @@
 import { spawn } from "child_process";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import {
+  buildDisableExtglobCommand,
+  buildShellEnv,
+  buildShellInitCommand,
+  resolveShellPath,
+  rewriteWindowsNullRedirect,
+  toNativeCwd
+} from "./shell-utils";
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
@@ -12,6 +20,8 @@ type ToolCommandResult = {
   exitCode: number | null;
   signal: string | null;
   truncated: boolean;
+  shellPath?: string;
+  startCwd?: string;
 };
 
 export async function handleBashTool(
@@ -36,7 +46,9 @@ export async function handleBashTool(
     execution.stderr,
     marker,
     execution.exitCode,
-    execution.signal
+    execution.signal,
+    shellPath,
+    startCwd
   );
   updateSessionCwd(context.sessionId, startCwd, result.cwd);
 
@@ -69,12 +81,17 @@ function buildShellCommand(command: string): {
   const shellPath = resolveShellPath();
   const marker = buildMarker();
   const initCommand = buildShellInitCommand(shellPath);
+  const disableExtglobCommand = buildDisableExtglobCommand(shellPath);
+  const normalizedCommand = rewriteWindowsNullRedirect(command);
   const wrappedParts = [];
   if (initCommand) {
     wrappedParts.push(initCommand);
   }
+  if (disableExtglobCommand) {
+    wrappedParts.push(disableExtglobCommand);
+  }
   wrappedParts.push(
-    command,
+    normalizedCommand,
     "__DEEPCODE_STATUS__=$?",
     `printf '%s%s\\n' "${marker}" "$PWD"`,
     "exit $__DEEPCODE_STATUS__"
@@ -94,8 +111,9 @@ async function executeShellCommand(
     const detached = process.platform !== "win32";
     const child = spawn(shellPath, shellArgs, {
       cwd,
-      env: process.env,
+      env: buildShellEnv(shellPath),
       detached,
+      windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"]
     });
     const pid = child.pid;
@@ -142,30 +160,6 @@ function appendChunk(existing: string, chunk: string | Buffer): string {
   return `${existing}${text.slice(0, remaining)}`;
 }
 
-function resolveShellPath(): string {
-  const envShell = process.env.SHELL;
-  if (envShell && /\/(bash|zsh)$/.test(envShell)) {
-    return envShell;
-  }
-  return "/bin/bash";
-}
-
-function buildShellInitCommand(shellPath: string): string | null {
-  if (/\/zsh$/.test(shellPath)) {
-    return [
-      'ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"',
-      'if [ -f "$ZSHRC" ]; then . "$ZSHRC"; fi'
-    ].join("; ");
-  }
-  if (/\/bash$/.test(shellPath)) {
-    return [
-      'BASHRC="${BASH_ENV:-$HOME/.bashrc}"',
-      'if [ -f "$BASHRC" ]; then . "$BASHRC"; fi'
-    ].join("; ");
-  }
-  return null;
-}
-
 function buildMarker(): string {
   const token = Math.random().toString(36).slice(2);
   return `__DEEPCODE_PWD__${token}__`;
@@ -176,7 +170,9 @@ function buildToolCommandResult(
   stderr: string,
   marker: string,
   exitCode: number | null,
-  signal: string | null
+  signal: string | null,
+  shellPath: string,
+  startCwd: string
 ): ToolCommandResult {
   const { output: cleanedStdout, cwd } = stripMarker(stdout, marker);
   const combined = joinOutput(cleanedStdout, stderr);
@@ -187,7 +183,9 @@ function buildToolCommandResult(
     cwd,
     exitCode,
     signal,
-    truncated
+    truncated,
+    shellPath,
+    startCwd
   };
 }
 
@@ -210,7 +208,8 @@ function stripMarker(stdout: string, marker: string): { output: string; cwd: str
   }
 
   const markerLine = lines[markerIndex];
-  const cwd = markerLine.slice(marker.length).trim() || null;
+  const shellCwd = markerLine.slice(marker.length).trim();
+  const cwd = shellCwd ? toNativeCwd(shellCwd) : null;
   lines.splice(markerIndex, 1);
   return { output: lines.join("\n"), cwd };
 }
@@ -232,13 +231,16 @@ function truncateOutput(output: string): { text: string; truncated: boolean } {
 }
 
 function buildErrorMessage(exitCode: number | null, signal: string | null, error?: string): string {
+  if (error) {
+    return error;
+  }
   if (signal) {
     return `Command terminated by signal ${signal}.`;
   }
   if (exitCode !== null) {
     return `Command failed with exit code ${exitCode}.`;
   }
-  return error || "Command failed.";
+  return "Command failed.";
 }
 
 function formatResult(
@@ -250,7 +252,9 @@ function formatResult(
     exitCode: result.exitCode,
     signal: result.signal,
     cwd: result.cwd,
-    truncated: result.truncated
+    truncated: result.truncated,
+    shellPath: result.shellPath,
+    startCwd: result.startCwd
   };
 
   const outputValue = result.output ? result.output : undefined;

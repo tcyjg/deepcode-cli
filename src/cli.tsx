@@ -1,6 +1,7 @@
 import React from "react";
 import { render } from "ink";
 import { App } from "./ui/App";
+import { setShellIfWindows } from "./tools/shell-utils";
 import { checkForNpmUpdate, promptForPendingUpdate, type PackageInfo } from "./updateCheck";
 
 const args = process.argv.slice(2);
@@ -46,6 +47,7 @@ if (args.includes("--help") || args.includes("-h")) {
 }
 
 const projectRoot = process.cwd();
+configureWindowsShell();
 
 if (!process.stdin.isTTY) {
   process.stderr.write(
@@ -71,6 +73,17 @@ async function main(): Promise<void> {
   inkInstance.waitUntilExit().then(() => {
     process.exit(0);
   });
+}
+
+function configureWindowsShell(): void {
+  process.env.NoDefaultCurrentDirectoryInExePath = "1";
+  try {
+    setShellIfWindows();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`deepcode: ${message}\n`);
+    process.exit(1);
+  }
 }
 
 function readPackageInfo(): PackageInfo {

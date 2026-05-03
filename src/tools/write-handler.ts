@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as path from "path";
 import { z } from "zod";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 import {
@@ -11,7 +10,13 @@ import {
   writeTextFile
 } from "./file-utils";
 import { executeValidatedTool } from "./runtime";
-import { getFileState, isFullFileView, normalizeFilePath, recordFileState } from "./state";
+import {
+  getFileState,
+  isAbsoluteFilePath,
+  isFullFileView,
+  normalizeFilePath,
+  recordFileState
+} from "./state";
 
 const writeSchema = z.strictObject({
   file_path: z.string().min(1, "file_path is required."),
@@ -41,7 +46,7 @@ export async function handleWriteTool(
     context,
     async (input) => {
       const filePath = normalizeFilePath(input.file_path);
-      if (!path.isAbsolute(filePath)) {
+      if (!isAbsoluteFilePath(filePath)) {
         return {
           ok: false,
           name: "write",

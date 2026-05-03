@@ -7,7 +7,7 @@ import type {
   ToolExecutionResult
 } from "./executor";
 import { readTextFileWithMetadata } from "./file-utils";
-import { createSnippet, markFileRead } from "./state";
+import { createSnippet, isAbsoluteFilePath, markFileRead, normalizeFilePath } from "./state";
 
 const DEFAULT_LINE_LIMIT = 2000;
 const MAX_LINE_LENGTH = 2000;
@@ -61,7 +61,7 @@ export async function handleReadTool(
   args: Record<string, unknown>,
   context: ToolExecutionContext
 ): Promise<ToolExecutionResult> {
-  let filePath = typeof args.file_path === "string" ? args.file_path : "";
+  let filePath = typeof args.file_path === "string" ? normalizeFilePath(args.file_path) : "";
   if (!filePath.trim()) {
     return {
       ok: false,
@@ -70,7 +70,7 @@ export async function handleReadTool(
     };
   }
 
-  if (!path.isAbsolute(filePath)) {
+  if (!isAbsoluteFilePath(filePath)) {
     if (filePath.startsWith("../") || filePath.startsWith("..\\")) {
       return {
         ok: false,

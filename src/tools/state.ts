@@ -1,4 +1,5 @@
 import * as path from "path";
+import { posixPathToWindowsPath } from "./shell-utils";
 
 export type FileLineEnding = "LF" | "CRLF";
 
@@ -25,8 +26,38 @@ const fileStatesBySession = new Map<string, Map<string, FileState>>();
 const snippetsBySession = new Map<string, Map<string, FileSnippet>>();
 const snippetCountersBySession = new Map<string, number>();
 
-export function normalizeFilePath(filePath: string): string {
-  return path.normalize(filePath);
+export function normalizeFilePath(filePath: string, platform: NodeJS.Platform = process.platform): string {
+  const nativePath = normalizeNativeFilePath(filePath, platform);
+  return platform === "win32" ? path.win32.normalize(nativePath) : path.normalize(nativePath);
+}
+
+export function normalizeNativeFilePath(filePath: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform !== "win32") {
+    return filePath;
+  }
+
+  if (isGitBashAbsolutePath(filePath)) {
+    return posixPathToWindowsPath(filePath);
+  }
+
+  return filePath;
+}
+
+export function isAbsoluteFilePath(filePath: string, platform: NodeJS.Platform = process.platform): boolean {
+  const nativePath = normalizeNativeFilePath(filePath, platform);
+  if (platform !== "win32") {
+    return path.isAbsolute(nativePath);
+  }
+
+  const normalized = path.win32.normalize(nativePath);
+  return (
+    path.win32.isAbsolute(normalized) &&
+    (/^[A-Za-z]:[\\/]/.test(normalized) || /^\\\\/.test(normalized))
+  );
+}
+
+function isGitBashAbsolutePath(filePath: string): boolean {
+  return /^\/[A-Za-z](?:\/|$)/.test(filePath) || /^\/cygdrive\/[A-Za-z](?:\/|$)/.test(filePath);
 }
 
 export function recordFileState(sessionId: string, state: FileState): void {

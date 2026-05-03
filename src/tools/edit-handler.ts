@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as path from "path";
 import { z } from "zod";
 import { buildThinkingRequestOptions } from "../openai-thinking";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
@@ -14,6 +13,7 @@ import {
   createSnippet,
   getFileState,
   getSnippet,
+  isAbsoluteFilePath,
   isFullFileView,
   normalizeFilePath,
   recordFileState
@@ -107,7 +107,7 @@ export async function handleEditTool(
       }
 
       filePath = normalizeFilePath(filePath);
-      if (!path.isAbsolute(filePath)) {
+      if (!isAbsoluteFilePath(filePath)) {
         return {
           ok: false,
           name: "edit",

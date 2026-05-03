@@ -1,8 +1,9 @@
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import type { SessionMessage } from "./session";
+import { findGitBashPath, resolveShellPath } from "./tools/shell-utils";
 
 export const AGENT_DRIFT_GUARD_SKILL = `
 ---
@@ -298,11 +299,17 @@ export function getCompactPrompt(sessionMessages: SessionMessage[]): string {
 
 function getRuntimeContext(projectRoot: string): string {
   const uname = getUnameInfo();
+  const shellPath = getShellPathInfo();
+  const shellModeOpts = process.platform === "win32" ? { "shell mode": "git-bash" } : {};
+  const runtimeVersions = getRuntimeVersionInfo();
   const env = {
     "root path": projectRoot,
     pwd: projectRoot,
     homedir: os.homedir(),
     "system info": uname,
+    "shell path": shellPath,
+    ...shellModeOpts,
+    ...runtimeVersions,
     "command installed": {
       "ast-grep": checkToolInstalled("ast-grep"),
       "ripgrep": checkToolInstalled("rg"),
@@ -316,6 +323,15 @@ ${JSON.stringify(env, null, 2)}
 
 function checkToolInstalled(tool: string): boolean {
   try {
+    if (process.platform === "win32") {
+      const bashPath = findGitBashPath();
+      execFileSync(bashPath, ["-lc", `command -v ${shellSingleQuote(tool)}`], {
+        encoding: "utf8",
+        stdio: "ignore",
+        windowsHide: true
+      });
+      return true;
+    }
     execSync(`command -v ${tool}`, { encoding: "utf8", stdio: "ignore" });
     return true;
   } catch {
@@ -323,8 +339,56 @@ function checkToolInstalled(tool: string): boolean {
   }
 }
 
+function getShellPathInfo(): string {
+  try {
+    return resolveShellPath();
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\"'\"'")}'`;
+}
+
+function getRuntimeVersionInfo(): Record<string, string> {
+  const versions: Record<string, string> = {};
+  const pythonVersion = getCommandVersion("python3", ["--version"]);
+  const nodeVersion = getCommandVersion("node", ["--version"]);
+
+  if (pythonVersion) {
+    versions["python3 version"] = pythonVersion.replace(/^Python\s+/i, "");
+  }
+  if (nodeVersion) {
+    versions["node version"] = nodeVersion;
+  }
+
+  return versions;
+}
+
+function getCommandVersion(command: string, args: string[]): string | null {
+  try {
+    const commandText = [command, ...args].map(shellSingleQuote).join(" ");
+    if (process.platform === "win32") {
+      return execFileSync(findGitBashPath(), ["-lc", `${commandText} 2>&1`], {
+        encoding: "utf8",
+        windowsHide: true
+      }).trim();
+    }
+    return execSync(`${commandText} 2>&1`, { encoding: "utf8" }).trim();
+  } catch {
+    return null;
+  }
+}
+
 function getUnameInfo(): string {
   try {
+    if (process.platform === "win32") {
+      return execFileSync(findGitBashPath(), ["-lc", "uname -a"], {
+        encoding: "utf8",
+        windowsHide: true
+      }).trim();
+    }
     return execSync("uname -a", { encoding: "utf8" }).trim();
   } catch {
     return `${os.type()} ${os.release()} ${os.arch()}`;

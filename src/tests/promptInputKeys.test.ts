@@ -1,5 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+
+const ANSI_RE = /\u001b\[[0-9;]*m/g;
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_RE, "");
+}
+
 import {
   IMAGE_ATTACHMENT_CLEAR_HINT,
   addUniqueSkill,
@@ -104,11 +110,11 @@ test("renderBufferWithCursor hides the simulated cursor when unfocused", () => {
 });
 
 test("renderBufferWithCursor draws the simulated cursor when focused", () => {
-  assert.equal(renderBufferWithCursor({ text: "", cursor: 0 }, true), " ");
-  assert.equal(renderBufferWithCursor({ text: "hello", cursor: 5 }, true), "hello ");
-  assert.equal(renderBufferWithCursor({ text: "hello", cursor: 1 }, true), "hello");
-  assert.equal(renderBufferWithCursor({ text: "hello\n", cursor: 6 }, true), "hello\n ");
-  assert.equal(renderBufferWithCursor({ text: "\n", cursor: 1 }, true), "\n ");
+  assert.equal(stripAnsi(renderBufferWithCursor({ text: "", cursor: 0 }, true)), " ");
+  assert.equal(stripAnsi(renderBufferWithCursor({ text: "hello", cursor: 5 }, true)), "hello ");
+  assert.equal(stripAnsi(renderBufferWithCursor({ text: "hello", cursor: 1 }, true)), "hello");
+  assert.equal(stripAnsi(renderBufferWithCursor({ text: "hello\n", cursor: 6 }, true)), "hello\n ");
+  assert.equal(stripAnsi(renderBufferWithCursor({ text: "\n", cursor: 1 }, true)), "\n ");
 });
 
 test("getPromptCursorPlacement targets the prompt row above divider and footer", () => {

@@ -37,9 +37,10 @@ type View = "chat" | "session-list";
 type AppProps = {
   projectRoot: string;
   version?: string;
+  onRestart?: () => void;
 };
 
-export function App({ projectRoot, version = "" }: AppProps): React.ReactElement {
+export function App({ projectRoot, version = "", onRestart }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const { stdout, write } = useStdout();
   const [view, setView] = useState<View>("chat");
@@ -136,16 +137,20 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
         return;
       }
       if (submission.command === "new") {
-        write("\u001B[2J\u001B[3J\u001B[H");
-        sessionManager.setActiveSessionId(null);
-        setMessages([]);
-        setStatusLine("");
-        setErrorLine(null);
-        setRunningProcesses(null);
-        setActiveStatus(null);
-        setDismissedQuestionIds(new Set());
-        await refreshSkills();
-        refreshSessionsList();
+        if (onRestart) {
+          onRestart();
+        } else {
+          write("\u001B[2J\u001B[3J\u001B[H");
+          sessionManager.setActiveSessionId(null);
+          setMessages([]);
+          setStatusLine("");
+          setErrorLine(null);
+          setRunningProcesses(null);
+          setActiveStatus(null);
+          setDismissedQuestionIds(new Set());
+          await refreshSkills();
+          refreshSessionsList();
+        }
         return;
       }
       if (submission.command === "resume") {
@@ -191,7 +196,7 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
         setRunningProcesses(null);
       }
     },
-    [exit, sessionManager, write]
+    [exit, onRestart, sessionManager, write]
   );
 
   const handleInterrupt = useCallback(() => {

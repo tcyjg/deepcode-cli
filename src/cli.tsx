@@ -62,17 +62,32 @@ void main();
 async function main(): Promise<void> {
   const updatePromptResult = await promptForPendingUpdate(packageInfo);
 
-  const inkInstance = render(<App projectRoot={projectRoot} version={packageInfo.version} />, {
-    exitOnCtrlC: false
-  });
+  const restartRef: { current: (() => void) | null } = { current: null };
 
-  if (!updatePromptResult.installed) {
-    void checkForNpmUpdate(packageInfo);
+  function startApp(): void {
+    const inkInstance = render(
+      <App
+        projectRoot={projectRoot}
+        version={packageInfo.version}
+        onRestart={() => restartRef.current?.()}
+      />,
+      { exitOnCtrlC: false }
+    );
+
+    restartRef.current = () => {
+      process.stdout.write("\u001B[2J\u001B[3J\u001B[H");
+      inkInstance.unmount();
+      startApp();
+    };
+
+    inkInstance.waitUntilExit().then(() => {
+      if (!restartRef.current) {
+        process.exit(0);
+      }
+    });
   }
 
-  inkInstance.waitUntilExit().then(() => {
-    process.exit(0);
-  });
+  startApp();
 }
 
 function configureWindowsShell(): void {

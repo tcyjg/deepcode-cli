@@ -17,7 +17,7 @@ export function MessageView({ message }: Props): React.ReactElement | null {
     const text = message.content || "(no content)";
     return (
       <Box flexDirection="column" marginY={0}>
-        <Text color="green">{`❯ ${text}`}</Text>
+        <Text color="green">{`> ${text}`}</Text>
         {Array.isArray(message.contentParams) && message.contentParams.length > 0 ? (
           <Text color="green">{`  📎 ${message.contentParams.length} image attachment(s)`}</Text>
         ) : null}

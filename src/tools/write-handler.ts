@@ -21,7 +21,7 @@ import {
 const writeSchema = z.strictObject({
   file_path: z.string().min(1, "file_path is required."),
   content: z.string({
-    invalid_type_error:
+    error:
       "content must be a string. If you are writing JSON, serialize the full document to text before calling write."
   })
 });

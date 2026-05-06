@@ -2,6 +2,7 @@ import { execFileSync, execSync } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import type { SessionMessage } from "./session";
 import { findGitBashPath, resolveShellPath } from "./tools/shell-utils";
 
@@ -396,7 +397,14 @@ function getUnameInfo(): string {
 }
 
 function getExtensionRoot(): string {
-  return path.resolve(__dirname, "..");
+  // Prefer `__dirname` which is always available in the CJS bundle output.
+  // Fall back to `import.meta.url` for ESM test environments (tsx --test).
+  if (typeof __dirname !== "undefined") {
+    return path.resolve(__dirname, "..");
+  }
+
+  const currentFilePath = fileURLToPath(import.meta.url);
+  return path.resolve(path.dirname(currentFilePath), "..");
 }
 
 export type ToolDefinition = {

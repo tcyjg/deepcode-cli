@@ -3,16 +3,17 @@
   "version": "0.1.10",
   "description": "Deep Code CLI - Vibe coding for the deepseek-v4 model in your terminal",
   "license": "MIT",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/lessweb/deepcode.git"
   },
   "bin": {
-    "deepcode": "./dist/cli.cjs"
+    "deepcode": "./dist/cli.js"
   },
-  "main": "./dist/cli.cjs",
+  "main": "./dist/cli.js",
   "files": [
-    "dist/cli.cjs",
+    "dist/cli.js",
     "docs/tools/**",
     "README.md",
     "LICENSE"
@@ -22,26 +23,28 @@
   },
   "scripts": {
     "typecheck": "tsc -p ./ --noEmit",
-    "bundle": "esbuild ./src/cli.tsx --bundle --platform=node --format=cjs --target=node18 --outfile=dist/cli.cjs --banner:js='#!/usr/bin/env node' --jsx=automatic --jsx-import-source=react --packages=external",
-    "build": "npm run typecheck && npm run bundle && chmod +x dist/cli.cjs",
+    "bundle": "esbuild ./src/cli.tsx --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.js --banner:js='#!/usr/bin/env node' --jsx=automatic --jsx-import-source=react --packages=external --log-override:empty-import-meta=silent",
+    "build": "npm run typecheck && npm run bundle && chmod +x dist/cli.js",
     "test": "tsx --test src/tests/*.test.ts",
     "test:single": "tsx --test",
     "prepack": "npm run build"
   },
   "dependencies": {
-    "chalk": "^4.1.2",
+    "chalk": "^5.6.2",
+    "gradient-string": "^3.0.0",
     "gray-matter": "^4.0.3",
-    "ignore": "^5.3.2",
-    "ink": "^3.2.0",
-    "openai": "^5.20.0",
-    "react": "^17.0.2",
-    "zod": "^3.25.76"
+    "ignore": "^7.0.5",
+    "ink": "^7.0.1",
+    "ink-gradient": "^4.0.0",
+    "openai": "^6.35.0",
+    "react": "^19.2.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^20.12.7",
-    "@types/react": "^17.0.2",
-    "esbuild": "^0.25.12",
-    "tsx": "^4.19.2",
-    "typescript": "^5.4.5"
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }

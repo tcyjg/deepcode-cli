@@ -27,9 +27,8 @@ function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
 
 test("readClipboardImage returns null when no clipboard helpers are installed", async () => {
   // Reload module so it picks up the patched PATH at spawn time.
-  const modulePath = require.resolve("../ui/clipboard");
-  delete require.cache[modulePath];
-  const { readClipboardImage } = require("../ui/clipboard") as typeof import("../ui/clipboard");
+  const moduleUrl = new URL(`../ui/clipboard.ts?t=${Date.now()}`, import.meta.url).href;
+  const { readClipboardImage } = await import(moduleUrl) as typeof import("../ui/clipboard");
   const result = withCleanPath(() => readClipboardImage());
   assert.equal(result, null);
 });
@@ -62,9 +61,8 @@ test("readClipboardImage uses osascript fallback on macOS when pngpaste is missi
       { mode: 0o755 }
     );
 
-    const modulePath = require.resolve("../ui/clipboard");
-    delete require.cache[modulePath];
-    const { readClipboardImage } = require("../ui/clipboard") as typeof import("../ui/clipboard");
+    const moduleUrl = new URL(`../ui/clipboard.ts?t=${Date.now()}`, import.meta.url).href;
+    const { readClipboardImage } = await import(moduleUrl) as typeof import("../ui/clipboard");
 
     process.env.PATH = binDir;
     const result = withPlatform("darwin", () => readClipboardImage());

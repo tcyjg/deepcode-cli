@@ -114,7 +114,7 @@ export function PromptInput({
   const slashMenu = showSkillsDropdown ? [] : slashToken ? filterSlashCommands(slashItems, slashToken) : [];
   const showMenu = slashMenu.length > 0;
   const promptHistoryKey = useMemo(() => promptHistory.join("\0"), [promptHistory]);
-  const promptPrefix = busy ? `${SPINNER_FRAMES[spinnerIndex]} ` : "❯ ";
+  const promptPrefix = busy ? `${SPINNER_FRAMES[spinnerIndex]} ` : "> ";
   const footerText = statusMessage
     ? statusMessage
     : busy
@@ -204,7 +204,6 @@ export function PromptInput({
       const now = Date.now();
       if (pendingExit && now - lastCtrlDAt.current < 2000) {
         exit();
-        process.exit(0);
         return;
       }
       lastCtrlDAt.current = now;
@@ -234,24 +233,28 @@ export function PromptInput({
     }
 
     if (showSkillsDropdown) {
-      if (key.upArrow) {
-        setSkillsDropdownIndex((idx) => (idx - 1 + Math.max(skills.length, 1)) % Math.max(skills.length, 1));
-        return;
-      }
-      if (key.downArrow) {
-        setSkillsDropdownIndex((idx) => (idx + 1) % Math.max(skills.length, 1));
-        return;
-      }
-      if ((input === " " && !key.ctrl && !key.meta) || (key.return && !key.shift && !key.meta)) {
-        const skill = skills[skillsDropdownIndex];
-        if (skill) {
-          toggleSelectedSkill(skill);
-        }
-        return;
-      }
-      if (key.tab) {
+      if (skills.length === 0) {
         setShowSkillsDropdown(false);
-        return;
+      } else {
+        if (key.upArrow) {
+          setSkillsDropdownIndex((idx) => (idx - 1 + skills.length) % skills.length);
+          return;
+        }
+        if (key.downArrow) {
+          setSkillsDropdownIndex((idx) => (idx + 1) % skills.length);
+          return;
+        }
+        if ((input === " " && !key.ctrl && !key.meta) || (key.return && !key.shift && !key.meta)) {
+          const skill = skills[skillsDropdownIndex];
+          if (skill) {
+            toggleSelectedSkill(skill);
+          }
+          return;
+        }
+        if (key.tab) {
+          setShowSkillsDropdown(false);
+          return;
+        }
       }
     }
 
@@ -279,11 +282,6 @@ export function PromptInput({
     const noModifier = !key.shift && !key.ctrl && !key.meta;
     const isPlainReturn = key.return && !key.shift && !key.meta;
 
-    if (busy && (isPlainReturn || (showMenu && key.tab))) {
-      setStatusMessage("wait for the current response or press esc to interrupt");
-      return;
-    }
-
     if (showMenu) {
       if (key.upArrow) {
         setMenuIndex((idx) => (idx - 1 + slashMenu.length) % slashMenu.length);
@@ -300,6 +298,11 @@ export function PromptInput({
           return;
         }
       }
+    }
+
+    if (busy && isPlainReturn) {
+      setStatusMessage("wait for the current response or press esc to interrupt");
+      return;
     }
 
     if (key.return) {
@@ -500,7 +503,8 @@ export function PromptInput({
       return;
     }
     if (item.kind === "exit") {
-      onSubmit({ text: "", imageUrls: [], command: "exit" });
+      onSubmit({ text: "/exit", imageUrls: [], command: "exit" });
+      setBuffer(EMPTY_BUFFER);
       return;
     }
   }
@@ -899,7 +903,7 @@ export function useTerminalInput(
   inputHandler: (input: string, key: InputKey) => void,
   options: { isActive?: boolean } = {}
 ): void {
-  const { stdin, setRawMode, internal_exitOnCtrlC } = useStdin();
+  const { stdin, setRawMode } = useStdin();
   const isActive = options.isActive ?? true;
 
   useEffect(() => {
@@ -918,17 +922,14 @@ export function useTerminalInput(
     }
     const handleData = (data: Buffer | string) => {
       const { input, key } = parseTerminalInput(data);
-
-      if (!(input === "c" && key.ctrl) || !internal_exitOnCtrlC) {
-        inputHandler(input, key);
-      }
+      inputHandler(input, key);
     };
 
     stdin?.on("data", handleData);
     return () => {
       stdin?.off("data", handleData);
     };
-  }, [isActive, stdin, internal_exitOnCtrlC, inputHandler]);
+  }, [isActive, stdin, inputHandler]);
 }
 
 export function parseTerminalInput(data: Buffer | string): { input: string; key: InputKey } {

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Static, Text, useApp, useStdout } from "ink";
+import chalk from "chalk";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -26,6 +27,7 @@ import {
   formatAskUserQuestionAnswers,
   type AskUserQuestionAnswers
 } from "./askUserQuestion";
+import { buildExitSummaryText } from "./exitSummary";
 
 const DEFAULT_MODEL = "deepseek-v4-pro";
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
@@ -35,9 +37,10 @@ type View = "chat" | "session-list";
 type AppProps = {
   projectRoot: string;
   version?: string;
+  onRestart?: () => void;
 };
 
-export function App({ projectRoot, version = "" }: AppProps): React.ReactElement {
+export function App({ projectRoot, version = "", onRestart }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const { stdout, write } = useStdout();
   const [view, setView] = useState<View>("chat");
@@ -51,6 +54,7 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
   const [runningProcesses, setRunningProcesses] = useState<SessionEntry["processes"]>(null);
   const [activeStatus, setActiveStatus] = useState<SessionStatus | null>(null);
   const [dismissedQuestionIds, setDismissedQuestionIds] = useState<Set<string>>(() => new Set());
+  const [isExiting, setIsExiting] = useState(false);
   const [, setNowTick] = useState(0);
 
   const messagesRef = useRef<SessionMessage[]>([]);
@@ -90,18 +94,7 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
 
   useEffect(() => {
     refreshSessionsList();
-    const list = sessionManager.listSessions();
-    if (list.length > 0) {
-      const latest = list[0];
-      sessionManager.setActiveSessionId(latest.id);
-      setMessages(loadVisibleMessages(sessionManager, latest.id));
-      setStatusLine(buildStatusLine(latest));
-      setRunningProcesses(latest.processes);
-      setActiveStatus(latest.status);
-      void refreshSkills(latest.id);
-    } else {
-      void refreshSkills();
-    }
+    void refreshSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -125,21 +118,39 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
   const handlePrompt = useCallback(
     async (submission: PromptSubmission) => {
       if (submission.command === "exit") {
-        exit();
-        process.exit(0);
+        setIsExiting(true);
+        setTimeout(() => {
+          const activeSessionId = sessionManager.getActiveSessionId();
+          const session = activeSessionId ? sessionManager.getSession(activeSessionId) : null;
+          const allMessages = activeSessionId
+            ? sessionManager.listSessionMessages(activeSessionId)
+            : messagesRef.current;
+          const resolved = resolveCurrentSettings();
+          const summary = buildExitSummaryText({ session, messages: allMessages, model: resolved.model });
+          process.stdout.write("\n");
+          process.stdout.write(chalk.green("> /exit "));
+          process.stdout.write("\n\n");
+          process.stdout.write(summary);
+          process.stdout.write("\n\n");
+          exit();
+        }, 0);
         return;
       }
       if (submission.command === "new") {
-        write("\u001B[2J\u001B[3J\u001B[H");
-        sessionManager.setActiveSessionId(null);
-        setMessages([]);
-        setStatusLine("");
-        setErrorLine(null);
-        setRunningProcesses(null);
-        setActiveStatus(null);
-        setDismissedQuestionIds(new Set());
-        await refreshSkills();
-        refreshSessionsList();
+        if (onRestart) {
+          onRestart();
+        } else {
+          write("\u001B[2J\u001B[3J\u001B[H");
+          sessionManager.setActiveSessionId(null);
+          setMessages([]);
+          setStatusLine("");
+          setErrorLine(null);
+          setRunningProcesses(null);
+          setActiveStatus(null);
+          setDismissedQuestionIds(new Set());
+          await refreshSkills();
+          refreshSessionsList();
+        }
         return;
       }
       if (submission.command === "resume") {
@@ -185,7 +196,7 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
         setRunningProcesses(null);
       }
     },
-    [exit, sessionManager, write]
+    [exit, onRestart, sessionManager, write]
   );
 
   const handleInterrupt = useCallback(() => {
@@ -225,6 +236,25 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
     ? buildLoadingText({ progress: streamProgress, processes: runningProcesses, now: Date.now() })
     : null;
   const welcomeSettings = useMemo(() => resolveCurrentSettings(), []);
+  const showWelcome = view === "chat";
+  const welcomeItem: SessionMessage = useMemo(() => ({
+    id: "__welcome__",
+    sessionId: "",
+    role: "system",
+    content: "",
+    contentParams: null,
+    messageParams: null,
+    compacted: false,
+    visible: true,
+    createTime: "",
+    updateTime: ""
+  }), []);
+  const staticItems = useMemo(() => {
+    if (showWelcome) {
+      return [welcomeItem, ...messages];
+    }
+    return messages;
+  }, [showWelcome, messages, welcomeItem]);
 
   const handleQuestionAnswers = useCallback(
     (answers: AskUserQuestionAnswers) => {
@@ -245,23 +275,28 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
 
   return (
     <Box flexDirection="column" width={screenWidth}>
-      {view === "chat" && messages.length === 0 ? (
-        <WelcomeScreen
-          projectRoot={projectRoot}
-          settings={welcomeSettings}
-          skills={skills}
-          version={version}
-          width={screenWidth}
-        />
-      ) : null}
-      <Static items={messages}>
-        {(message) => (
-          <MessageView
-            key={message.id}
-            message={message}
-            collapsed={isCollapsedThinking(message, expandedThinkingId)}
-          />
-        )}
+      <Static items={staticItems}>
+        {(item) => {
+          if (item.id === "__welcome__") {
+            return (
+              <WelcomeScreen
+                key="__welcome__"
+                projectRoot={projectRoot}
+                settings={welcomeSettings}
+                skills={skills}
+                version={version}
+                width={screenWidth}
+              />
+            );
+          }
+          return (
+            <MessageView
+              key={item.id}
+              message={item}
+              collapsed={isCollapsedThinking(item, expandedThinkingId)}
+            />
+          );
+        }}
       </Static>
       {statusLine ? (
         <Box>
@@ -285,7 +320,7 @@ export function App({ projectRoot, version = "" }: AppProps): React.ReactElement
           onSubmit={handleQuestionAnswers}
           onCancel={handleQuestionCancel}
         />
-      ) : (
+      ) : isExiting ? null : (
         <PromptInput
           skills={skills}
           promptHistory={promptHistory}

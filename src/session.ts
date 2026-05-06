@@ -1326,7 +1326,7 @@ ${skillMd}
 
   private loadAgentInstructions(): string | null {
     const candidatePaths = [
-      path.join(this.projectRoot, ".deepcode", "AGENTS.md"),
+      path.join(this.projectRoot, "AGENTS.md"),
       path.join(os.homedir(), ".deepcode", "AGENTS.md")
     ];
 

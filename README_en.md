@@ -10,7 +10,7 @@ npm install -g @vegamo/deepcode-cli
 
 Run `deepcode` inside any project directory to get started.
 
-![intro1](resources/intro1.png)
+![intro2](resources/intro2.png)
 
 ## Configuration
 

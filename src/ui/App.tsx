@@ -240,7 +240,7 @@ export function App({ projectRoot, version = "", onRestart }: AppProps): React.R
   const welcomeItem: SessionMessage = useMemo(() => ({
     id: "__welcome__",
     sessionId: "",
-    role: "welcome",
+    role: "system",
     content: "",
     contentParams: null,
     messageParams: null,

@@ -193,12 +193,18 @@ function wrapAnsiText(text: string, maxWidth: number): string[] {
 type UsageFields = {
   promptTokens: number;
   completionTokens: number;
+  totalTokens: number;
   cachedTokens: number;
+  reasoningTokens: number;
 };
 
 function extractUsageFields(usage: unknown | null): UsageFields {
+  const empty: UsageFields = {
+    promptTokens: 0, completionTokens: 0, totalTokens: 0,
+    cachedTokens: 0, reasoningTokens: 0,
+  };
   if (!usage || typeof usage !== "object" || Array.isArray(usage)) {
-    return { promptTokens: 0, completionTokens: 0, cachedTokens: 0 };
+    return empty;
   }
 
   const record = usage as Record<string, unknown>;
@@ -208,11 +214,13 @@ function extractUsageFields(usage: unknown | null): UsageFields {
     typeof record.completion_tokens === "number"
       ? record.completion_tokens
       : 0;
+  const totalTokens =
+    typeof record.total_tokens === "number" ? record.total_tokens : 0;
 
   let cachedTokens = 0;
-  const details = record.prompt_tokens_details;
-  if (details && typeof details === "object" && !Array.isArray(details)) {
-    const cached = (details as Record<string, unknown>).cached_tokens;
+  const promptDetails = record.prompt_tokens_details;
+  if (promptDetails && typeof promptDetails === "object" && !Array.isArray(promptDetails)) {
+    const cached = (promptDetails as Record<string, unknown>).cached_tokens;
     if (typeof cached === "number") {
       cachedTokens = cached;
     }
@@ -223,7 +231,16 @@ function extractUsageFields(usage: unknown | null): UsageFields {
     cachedTokens = record.prompt_cache_hit_tokens;
   }
 
-  return { promptTokens, completionTokens, cachedTokens };
+  let reasoningTokens = 0;
+  const completionDetails = record.completion_tokens_details;
+  if (completionDetails && typeof completionDetails === "object" && !Array.isArray(completionDetails)) {
+    const reasoning = (completionDetails as Record<string, unknown>).reasoning_tokens;
+    if (typeof reasoning === "number") {
+      reasoningTokens = reasoning;
+    }
+  }
+
+  return { promptTokens, completionTokens, totalTokens, cachedTokens, reasoningTokens };
 }
 
 export function buildExitSummaryText(input: ExitSummaryInput): string {
@@ -262,25 +279,51 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
     "",
     `  ${header}`,
     "",
-  //   `  ${chalk.bold("Interaction Summary")}`,
-  //   `  ${labelColor("Session ID:")}        ${chalk.white(sessionId)}`,
-  //   `  ${labelColor("Tool Calls:")}        ${chalk.white(String(stats.total))}  ( ${chalk.green(`✓ ${stats.succeeded}`)}  ${chalk.red(`✕ ${stats.failed}`)} )`,
-  //   `  ${labelColor("Success Rate:")}      ${chalk.white(successRate + "%")}`,
-  //   "",
-  //   `  ${chalk.bold("Performance")}`,
-  //   `  ${labelColor("Wall Time:")}         ${chalk.white(formatDuration(wallMs))}`,
-  //   `  ${labelColor("Agent Active:")}      ${chalk.white(formatDuration(wallMs))}`,
-  //   `    ${chalk.dim("» API Time:")}      ${chalk.white(formatDuration(timeStats.apiTimeMs))}`,
-  //   `    ${chalk.dim("» Tool Time:")}     ${chalk.white(formatDuration(timeStats.toolTimeMs))}`,
-  //   "",
+    `  ${chalk.bold("Interaction Summary")}`,
+    `  ${labelColor("Session ID:")}        ${chalk.white(sessionId)}`,
+    `  ${labelColor("Tool Calls:")}        ${chalk.white(String(stats.total))}  ( ${chalk.green(`✓ ${stats.succeeded}`)}  ${chalk.red(`✕ ${stats.failed}`)} )`,
+    `  ${labelColor("Success Rate:")}      ${chalk.white(successRate + "%")}`,
+    "",
+    // `  ${chalk.bold("Performance")}`,
+    // `  ${labelColor("Wall Time:")}         ${chalk.white(formatDuration(wallMs))}`,
+    // `  ${labelColor("Agent Active:")}      ${chalk.white(formatDuration(wallMs))}`,
+    // `    ${chalk.dim("» API Time:")}      ${chalk.white(formatDuration(timeStats.apiTimeMs))}`,
+    // `    ${chalk.dim("» Tool Time:")}     ${chalk.white(formatDuration(timeStats.toolTimeMs))}`,
+    // "",
   ];
+
+
 
   // ── Model Usage section ──
   const usage = extractUsageFields(session?.usage ?? null);
   const modelName = model ?? "unknown";
   const hasUsage = usage.promptTokens > 0 || usage.completionTokens > 0;
 
-  if (hasUsage || model) {
+
+  // ── Context Window section ──
+  rows.push(`  ${chalk.bold("Context Window")}`);
+
+  const labelW = 24;
+  const valueW = 14;
+
+  const contextRow = (label: string, value: string) =>
+    `  ${padRight(labelColor(label), labelW)}${padLeft(chalk.white(value), valueW)}`;
+
+  rows.push(contextRow("Total Tokens:", formatNumber(usage.totalTokens)));
+  rows.push(contextRow("Input Tokens:", formatNumber(usage.promptTokens)));
+  rows.push(contextRow("Output Tokens:", formatNumber(usage.completionTokens)));
+
+  if (usage.reasoningTokens > 0) {
+    rows.push(contextRow("Reasoning Tokens:", formatNumber(usage.reasoningTokens)));
+  }
+
+  if (usage.cachedTokens > 0) {
+    rows.push(contextRow("Cached Tokens:", formatNumber(usage.cachedTokens)));
+  }
+
+  rows.push("");
+
+  if (hasUsage && model) {
 
 
     // Table header

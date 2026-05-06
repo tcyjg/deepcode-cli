@@ -87,7 +87,7 @@ export type SessionsIndex = {
   originalPath: string;
 };
 
-export type SessionMessageRole = "system" | "user" | "assistant" | "tool" | "welcome";
+export type SessionMessageRole = "system" | "user" | "assistant" | "tool";
 
 export type MessageMeta = {
   function?: unknown;

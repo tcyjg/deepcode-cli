@@ -14,6 +14,38 @@ type ToolCallStats = {
   failed: number;
 };
 
+type TimeStats = {
+  apiTimeMs: number;
+  toolTimeMs: number;
+};
+
+function calculateTimeStats(messages: SessionMessage[]): TimeStats {
+  let apiTimeMs = 0;
+  let toolTimeMs = 0;
+  let previousTime = 0;
+
+  for (const message of messages) {
+    if (message.role !== "assistant" && message.role !== "tool") {
+      const t = new Date(message.createTime).getTime();
+      if (t > 0) previousTime = t;
+      continue;
+    }
+
+    const current = new Date(message.createTime).getTime();
+    if (previousTime > 0 && current > previousTime) {
+      const gap = current - previousTime;
+      if (message.role === "assistant") {
+        apiTimeMs += gap;
+      } else {
+        toolTimeMs += gap;
+      }
+    }
+    previousTime = current;
+  }
+
+  return { apiTimeMs, toolTimeMs };
+}
+
 function countToolCalls(messages: SessionMessage[]): ToolCallStats {
   let total = 0;
   let succeeded = 0;
@@ -101,29 +133,54 @@ function wrapAnsiText(text: string, maxWidth: number): string[] {
     }
   }
 
-  const lines: string[] = [];
-  let currentLine = "";
-  let currentVisibleLen = 0;
-  let lastAnsiState = ""; // tracks the active ANSI escape sequence
+  // Group tokens into words (sequences of visible non-space chars) and spaces/separators
+  type TokenWord = { text: string; visibleLen: number };
+  const words: TokenWord[] = [];
+  let currentWord = "";
+  let currentWordLen = 0;
+  let lastAnsiState = "";
+
+  const flushWord = () => {
+    if (currentWordLen > 0 || currentWord.includes("\u001b")) {
+      words.push({ text: currentWord, visibleLen: currentWordLen });
+    }
+    currentWord = "";
+    currentWordLen = 0;
+  };
 
   for (const token of tokens) {
     if (!token.visible) {
-      // ANSI escape: carry forward into current line and remember state
-      currentLine += token.char;
+      currentWord += token.char;
       lastAnsiState = token.char;
       continue;
     }
 
-    if (currentVisibleLen >= maxWidth) {
-      // Reset color at end of current line before wrapping
-      lines.push(currentLine + "\u001b[0m");
-      // Restart the next line with the last active ANSI color
-      currentLine = lastAnsiState + token.char;
-      currentVisibleLen = 1;
+    if (token.char === " ") {
+      flushWord();
+      // Represent the space as a word of its own with visibleLen 1
+      words.push({ text: " ", visibleLen: 1 });
     } else {
-      currentLine += token.char;
-      currentVisibleLen += 1;
+      currentWord += token.char;
+      currentWordLen += 1;
     }
+  }
+  flushWord();
+
+  // Now do word-aware line wrapping
+  const lines: string[] = [];
+  let currentLine = "";
+  let currentVisibleLen = 0;
+
+  for (const word of words) {
+    // If adding this word would overflow and the line is non-empty, start a new line
+    if (currentVisibleLen + word.visibleLen > maxWidth && currentVisibleLen > 0) {
+      lines.push(currentLine + "\u001b[0m");
+      currentLine = lastAnsiState;
+      currentVisibleLen = 0;
+    }
+
+    currentLine += word.text;
+    currentVisibleLen += word.visibleLen;
   }
 
   if (currentLine) {
@@ -172,6 +229,7 @@ function extractUsageFields(usage: unknown | null): UsageFields {
 export function buildExitSummaryText(input: ExitSummaryInput): string {
   const { session, messages, model } = input;
   const stats = countToolCalls(messages);
+  const timeStats = calculateTimeStats(messages);
 
   const sessionId = session?.id ?? "N/A";
   const successRate = stats.total > 0
@@ -198,21 +256,23 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
   const header = chalk.bold(titleColor("Agent powering down. Goodbye!"));
   const divider = chalk.dim("─".repeat(contentWidth-4));
 
+  // TODO: 暂时不显示这些统计信息，后面修改为 VSCode 插件的 context window的弹框统计信息
+  // ── Interaction Summary section ──
   const rows: string[] = [
     "",
     `  ${header}`,
     "",
-    `  ${chalk.bold("Interaction Summary")}`,
-    `  ${labelColor("Session ID:")}        ${chalk.white(sessionId)}`,
-    `  ${labelColor("Tool Calls:")}        ${chalk.white(String(stats.total))}  ( ${chalk.green(`✓ ${stats.succeeded}`)}  ${chalk.red(`✕ ${stats.failed}`)} )`,
-    `  ${labelColor("Success Rate:")}      ${chalk.white(successRate + "%")}`,
-    "",
-    `  ${chalk.bold("Performance")}`,
-    `  ${labelColor("Wall Time:")}         ${chalk.white(formatDuration(wallMs))}`,
-    `  ${labelColor("Agent Active:")}      ${chalk.white(formatDuration(wallMs))}`,
-    `    ${chalk.dim("» API Calls:")}     ${chalk.white(String(assistantCount))}`,
-    `    ${chalk.dim("» Tool Calls:")}    ${chalk.white(String(stats.total))}`,
-    "",
+  //   `  ${chalk.bold("Interaction Summary")}`,
+  //   `  ${labelColor("Session ID:")}        ${chalk.white(sessionId)}`,
+  //   `  ${labelColor("Tool Calls:")}        ${chalk.white(String(stats.total))}  ( ${chalk.green(`✓ ${stats.succeeded}`)}  ${chalk.red(`✕ ${stats.failed}`)} )`,
+  //   `  ${labelColor("Success Rate:")}      ${chalk.white(successRate + "%")}`,
+  //   "",
+  //   `  ${chalk.bold("Performance")}`,
+  //   `  ${labelColor("Wall Time:")}         ${chalk.white(formatDuration(wallMs))}`,
+  //   `  ${labelColor("Agent Active:")}      ${chalk.white(formatDuration(wallMs))}`,
+  //   `    ${chalk.dim("» API Time:")}      ${chalk.white(formatDuration(timeStats.apiTimeMs))}`,
+  //   `    ${chalk.dim("» Tool Time:")}     ${chalk.white(formatDuration(timeStats.toolTimeMs))}`,
+  //   "",
   ];
 
   // ── Model Usage section ──
@@ -220,7 +280,7 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
   const modelName = model ?? "unknown";
   const hasUsage = usage.promptTokens > 0 || usage.completionTokens > 0;
 
-  if (hasUsage && model) {
+  if (hasUsage || model) {
 
 
     // Table header

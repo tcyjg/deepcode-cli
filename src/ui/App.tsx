@@ -209,6 +209,11 @@ export function App({ projectRoot, version = "", onRestart }: AppProps): React.R
     sessionManager.interruptActiveSession();
   }, [sessionManager]);
 
+  const handleSubmit = useCallback(
+    (submission: PromptSubmission) => { void handlePrompt(submission); },
+    [handlePrompt]
+  );
+
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
       sessionManager.setActiveSessionId(sessionId);
@@ -224,7 +229,12 @@ export function App({ projectRoot, version = "", onRestart }: AppProps): React.R
     [sessionManager]
   );
 
-  const screenWidth = useMemo(()=> columns ?? stdout?.columns ?? 80, [columns, stdout]);
+  const [stableColumns, setStableColumns] = useState(columns);
+  useEffect(() => {
+    const timer = setTimeout(() => setStableColumns(columns), 100);
+    return () => clearTimeout(timer);
+  }, [columns]);
+  const screenWidth = useMemo(() => stableColumns ?? stdout?.columns ?? 80, [stableColumns, stdout]);
   const promptHistory = useMemo(() => {
     return messages
       .filter((message) => message.role === "user" && typeof message.content === "string")
@@ -336,8 +346,9 @@ export function App({ projectRoot, version = "", onRestart }: AppProps): React.R
           promptHistory={promptHistory}
           busy={busy}
           loadingText={loadingText}
-          onSubmit={(submission) => void handlePrompt(submission)}
+          onSubmit={handleSubmit}
           onInterrupt={handleInterrupt}
+          placeholder='Type your message...'
         />
       )}
     </Box>

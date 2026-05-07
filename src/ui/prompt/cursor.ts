@@ -43,7 +43,7 @@ function disableTerminalFocusReporting(): string {
 export function getPromptCursorPlacement(
   state: PromptBufferState,
   screenWidth: number,
-  promptPrefix: string,
+  prefixWidth: number,
   footerText: string
 ): CursorPlacement {
   const width = Math.max(1, screenWidth);
@@ -53,8 +53,8 @@ export function getPromptCursorPlacement(
   const displayText = beforeCursor + (typeof at === "undefined" || at === "\n" ? " " : at) +
     (at === "\n" ? "\n" : "") + (typeof at === "undefined" ? "" : state.text.slice(cursor + 1));
 
-  const cursorPosition = measureTextPosition(beforeCursor, width, textWidth(promptPrefix));
-  const promptRows = measureTextRows(displayText, width, textWidth(promptPrefix));
+  const cursorPosition = measureTextPosition(beforeCursor, width, prefixWidth);
+  const promptRows = measureTextRows(displayText, width, prefixWidth);
   const footerRows = 1 + measureTextRows(footerText, width, 0);
 
   return {

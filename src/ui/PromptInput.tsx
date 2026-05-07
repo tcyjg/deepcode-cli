@@ -53,11 +53,31 @@ type Props = {
   busy: boolean;
   loadingText?: string | null;
   disabled?: boolean;
+  placeholder?: string;
   onSubmit: (submission: PromptSubmission) => void;
   onInterrupt: () => void;
 };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const PROMPT_PREFIX_WIDTH = 2;
+
+const PromptPrefixLine = React.memo(function PromptPrefixLine({ busy }: { busy: boolean }): React.ReactElement {
+  const [spinnerIndex, setSpinnerIndex] = useState(0);
+
+  useEffect(() => {
+    if (!busy) {
+      setSpinnerIndex(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setSpinnerIndex((index) => (index + 1) % SPINNER_FRAMES.length);
+    }, 80);
+    return () => clearInterval(timer);
+  }, [busy]);
+
+  const prefix = busy ? `${SPINNER_FRAMES[spinnerIndex]} ` : "> ";
+  return <Text color={busy ? "yellow" : "green"}>{prefix}</Text>;
+});
 
 export const PromptInput = React.memo(function PromptInput({
   skills,
@@ -66,6 +86,7 @@ export const PromptInput = React.memo(function PromptInput({
   busy,
   loadingText,
   disabled,
+  placeholder,
   onSubmit,
   onInterrupt
 }: Props): React.ReactElement {
@@ -82,7 +103,6 @@ export const PromptInput = React.memo(function PromptInput({
   const [historyCursor, setHistoryCursor] = useState(-1);
   const [draftBeforeHistory, setDraftBeforeHistory] = useState<string | null>(null);
   const [hasTerminalFocus, setHasTerminalFocus] = useState(true);
-  const [spinnerIndex, setSpinnerIndex] = useState(0);
   const lastCtrlDAt = React.useRef<number>(0);
 
   const slashItems = React.useMemo(() => buildSlashCommands(skills), [skills]);
@@ -90,7 +110,6 @@ export const PromptInput = React.memo(function PromptInput({
   const slashMenu = showSkillsDropdown ? [] : slashToken ? filterSlashCommands(slashItems, slashToken) : [];
   const showMenu = slashMenu.length > 0;
   const promptHistoryKey = React.useMemo(() => promptHistory.join("\0"), [promptHistory]);
-  const promptPrefix = busy ? `${SPINNER_FRAMES[spinnerIndex]} ` : "> ";
   const footerText = statusMessage
     ? statusMessage
     : busy
@@ -99,23 +118,12 @@ export const PromptInput = React.memo(function PromptInput({
         : "esc to interrupt · ctrl+c to cancel input"
       : "enter send · shift+enter newline · ctrl+v image · / commands · ctrl+d exit";
   const cursorPlacement = React.useMemo(
-    () => getPromptCursorPlacement(buffer, screenWidth, promptPrefix, footerText),
-    [buffer, footerText, promptPrefix, screenWidth]
+    () => getPromptCursorPlacement(buffer, screenWidth, PROMPT_PREFIX_WIDTH, footerText),
+    [buffer, footerText, screenWidth]
   );
 
   useTerminalFocusReporting(stdout, !disabled);
   usePromptTerminalCursor(stdout, cursorPlacement, !disabled);
-
-  useEffect(() => {
-    if (!busy) {
-      setSpinnerIndex(0);
-      return;
-    }
-    const timer = setInterval(() => {
-      setSpinnerIndex((index) => (index + 1) % SPINNER_FRAMES.length);
-    }, 80);
-    return () => clearInterval(timer);
-  }, [busy]);
 
   useEffect(() => {
     if (!showMenu) {
@@ -589,12 +597,12 @@ export const PromptInput = React.memo(function PromptInput({
           {slashMenu.length > 8 ? <Text dimColor>… {slashMenu.length - 8} more</Text> : null}
         </Box>
       ) : null}
-      <Text dimColor>{divider}</Text>
+      <Text dimColor wrap="truncate-end">{divider}</Text>
       <Box>
-        <Text color={busy ? "yellow" : "green"}>{promptPrefix}</Text>
-        <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus)}</Text>
+        <PromptPrefixLine busy={busy} />
+        <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder)}</Text>
       </Box>
-      <Text dimColor>{divider}</Text>
+      <Text dimColor wrap="truncate-end">{divider}</Text>
       <Box>
         <Text dimColor>{footerText}</Text>
       </Box>
@@ -655,12 +663,17 @@ export function isClearImageAttachmentsShortcut(input: string, key: Pick<InputKe
   return key.ctrl && (input === "x" || input === "X");
 }
 
-export function renderBufferWithCursor(state: PromptBufferState, isFocused: boolean): string {
+export function renderBufferWithCursor(state: PromptBufferState, isFocused: boolean, placeholder?: string): string {
   const text = state.text || "";
   const cursor = Math.max(0, Math.min(state.cursor, text.length));
   const before = text.slice(0, cursor);
   const at = text[cursor];
   const after = text.slice(cursor + 1);
+
+  if (text.length === 0 && placeholder) {
+    return chalk.dim("  " +placeholder);
+  }
+
   if (!isFocused) {
     return text.endsWith("\n") ? `${text} ` : text;
   }

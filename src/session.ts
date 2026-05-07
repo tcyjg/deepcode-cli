@@ -1637,7 +1637,7 @@ ${skillMd}
     toolCallId: string,
     usedToolMessageIndexes: Set<number>
   ): number | null {
-    let firstFallbackIndex: number | null = null;
+    let firstMatchingIndex: number | null = null;
     for (let index = assistantIndex + 1; index < messages.length; index += 1) {
       const message = messages[index];
       if (message.role !== "tool" || usedToolMessageIndexes.has(index)) {
@@ -1649,14 +1649,14 @@ ${skillMd}
         continue;
       }
 
-      if (firstFallbackIndex == null) {
-        firstFallbackIndex = index;
+      if (firstMatchingIndex == null) {
+        firstMatchingIndex = index;
       }
       if (!this.isInterruptedToolMessage(message)) {
         return index;
       }
     }
-    return firstFallbackIndex;
+    return firstMatchingIndex;
   }
 
   private getAssistantToolCalls(message: SessionMessage): unknown[] {

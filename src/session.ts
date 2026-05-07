@@ -9,6 +9,7 @@ import { buildThinkingRequestOptions } from "./openai-thinking";
 import { DEEPSEEK_V4_MODELS } from "./model-capabilities";
 import { getCompactPrompt, getSystemPrompt, getTools, AGENT_DRIFT_GUARD_SKILL } from "./prompt";
 import { ToolExecutor, type CreateOpenAIClient } from "./tools/executor";
+import { logApiError } from "./error-logger";
 
 const MAX_SESSION_ENTRIES = 50;
 const DEFAULT_NEW_PROMPT_API_URL = "https://deepcode.vegamo.cn/api/plugin/new";
@@ -261,6 +262,19 @@ export class SessionManager {
         options?: Record<string, unknown>
       ) => Promise<unknown>)(streamRequest, options);
     } catch (error) {
+      logApiError({
+        timestamp: new Date().toISOString(),
+        location: "SessionManager.createChatCompletionStream:create",
+        requestId,
+        sessionId,
+        model: typeof request.model === "string" ? request.model : undefined,
+        error: {
+          name: error instanceof Error ? error.name : "UnknownError",
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        },
+        request: streamRequest
+      });
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
       throw error;
     }
@@ -349,6 +363,21 @@ export class SessionManager {
           }
         }
       }
+    } catch (error) {
+      logApiError({
+        timestamp: new Date().toISOString(),
+        location: "SessionManager.createChatCompletionStream:stream",
+        requestId,
+        sessionId,
+        model: typeof request.model === "string" ? request.model : undefined,
+        error: {
+          name: error instanceof Error ? error.name : "UnknownError",
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        },
+        request: streamRequest
+      });
+      throw error;
     } finally {
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
     }

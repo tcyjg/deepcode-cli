@@ -26,8 +26,7 @@ export function findGitBashPath(): string {
     return cachedGitBashPath;
   }
 
-  const gitPath = findWindowsExecutable("git");
-  if (gitPath) {
+  for (const gitPath of findAllWindowsExecutableCandidates("git")) {
     const bashPath = pathWin32.join(gitPath, "..", "..", "bin", "bash.exe");
     if (fs.existsSync(bashPath)) {
       cachedGitBashPath = bashPath;
@@ -154,14 +153,8 @@ export function buildShellEnv(shellPath: string): NodeJS.ProcessEnv {
   return env;
 }
 
-function findWindowsExecutable(executable: string): string | null {
-  if (executable === "git") {
-    for (const location of WINDOWS_GIT_LOCATIONS) {
-      if (fs.existsSync(location)) {
-        return location;
-      }
-    }
-  }
+function findAllWindowsExecutableCandidates(executable: string): string[] {
+  const extraCandidates = executable === "git" ? WINDOWS_GIT_LOCATIONS : [];
 
   try {
     const output = execFileSync("where.exe", [executable], {
@@ -169,19 +162,31 @@ function findWindowsExecutable(executable: string): string | null {
       stdio: ["ignore", "pipe", "ignore"],
       windowsHide: true
     });
-    const candidates = output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const cwd = process.cwd().toLowerCase();
-    for (const candidate of candidates) {
-      const normalized = path.resolve(candidate).toLowerCase();
-      const candidateDir = path.dirname(normalized).toLowerCase();
-      if (candidateDir === cwd || normalized.startsWith(`${cwd}${path.sep}`)) {
-        continue;
-      }
-      return candidate;
-    }
+    return filterWindowsExecutableCandidates([
+      ...output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+      ...extraCandidates
+    ]);
   } catch {
-    // Fall through to a not-found result.
+    return filterWindowsExecutableCandidates(extraCandidates);
+  }
+}
+
+function filterWindowsExecutableCandidates(candidates: string[]): string[] {
+  const cwd = process.cwd().toLowerCase();
+  const seen = new Set<string>();
+  const results: string[] = [];
+
+  for (const candidate of candidates) {
+    const normalized = path.resolve(candidate).toLowerCase();
+    const candidateDir = path.dirname(normalized).toLowerCase();
+    if (candidateDir === cwd || normalized.startsWith(`${cwd}${path.sep}`)) {
+      continue;
+    }
+    if (!seen.has(normalized) && fs.existsSync(candidate)) {
+      seen.add(normalized);
+      results.push(candidate);
+    }
   }
 
-  return null;
+  return results;
 }

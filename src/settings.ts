@@ -13,6 +13,7 @@ export type DeepcodingSettings = {
   env?: DeepcodingEnv;
   thinkingEnabled?: boolean;
   reasoningEffort?: ReasoningEffort;
+  debugLogEnabled?: boolean;
   notify?: string;
   webSearchTool?: string;
 };
@@ -23,6 +24,7 @@ export type ResolvedDeepcodingSettings = {
   model: string;
   thinkingEnabled: boolean;
   reasoningEffort: ReasoningEffort;
+  debugLogEnabled: boolean;
   notify?: string;
   webSearchTool?: string;
 };
@@ -63,6 +65,7 @@ export function resolveSettings(
     model,
     thinkingEnabled: resolveThinkingEnabled(settings, model),
     reasoningEffort: resolveReasoningEffort(settings?.reasoningEffort),
+    debugLogEnabled: settings?.debugLogEnabled === true,
     notify: notify || undefined,
     webSearchTool: webSearchTool || undefined
   };

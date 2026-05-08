@@ -13,6 +13,7 @@ test("resolveSettings reads top-level thinkingEnabled, notify, and webSearchTool
       },
       thinkingEnabled: true,
       reasoningEffort: "high",
+      debugLogEnabled: true,
       notify: "  /tmp/notify.sh  ",
       webSearchTool: "  /tmp/web-search.sh  "
     },
@@ -27,6 +28,7 @@ test("resolveSettings reads top-level thinkingEnabled, notify, and webSearchTool
   assert.equal(resolved.apiKey, "sk-test");
   assert.equal(resolved.thinkingEnabled, true);
   assert.equal(resolved.reasoningEffort, "high");
+  assert.equal(resolved.debugLogEnabled, true);
   assert.equal(resolved.notify, "/tmp/notify.sh");
   assert.equal(resolved.webSearchTool, "/tmp/web-search.sh");
 });

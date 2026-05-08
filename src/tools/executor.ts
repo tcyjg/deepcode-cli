@@ -13,6 +13,7 @@ export type CreateOpenAIClient = () => {
   baseURL?: string;
   thinkingEnabled: boolean;
   reasoningEffort?: ReasoningEffort;
+  debugLogEnabled?: boolean;
   notify?: string;
   webSearchTool?: string;
   machineId?: string;

@@ -13,7 +13,6 @@ type WelcomeScreenProps = {
   skills: SkillInfo[];
   version: string;
   width: number;
-  rootDirectoryWarning?: string | null;
 };
 
 const TITLE_PANEL_WIDTH = 70;

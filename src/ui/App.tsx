@@ -59,19 +59,6 @@ export function App({ projectRoot, version = "", onRestart }: AppProps): React.R
   const [showWelcome, setShowWelcome] = useState(true);
   const [nowTick, setNowTick] = useState(0);
 
-  const rootDirectoryWarning = useMemo(() => {
-    try {
-      const workspaceRealPath = fs.realpathSync(projectRoot);
-      const rootRealPath = fs.realpathSync(os.homedir());
-      if (workspaceRealPath === rootRealPath) {
-        return 'Warning: You are running DeepCode CLI in the root directory. Your entire folder structure will be used for context. It is strongly recommended to run in a project-specific directory.';
-      }
-      return null;
-    } catch {
-      return 'Could not verify the current directory due to a file system error.';
-    }
-  }, [projectRoot]);
-
   const messagesRef = useRef<SessionMessage[]>([]);
   messagesRef.current = messages;
 
@@ -318,7 +305,6 @@ export function App({ projectRoot, version = "", onRestart }: AppProps): React.R
                 skills={skills}
                 version={version}
                 width={screenWidth}
-                rootDirectoryWarning={rootDirectoryWarning}
               />
             );
           }

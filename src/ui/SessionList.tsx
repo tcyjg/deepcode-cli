@@ -99,7 +99,10 @@ export function SessionList({sessions, onSelect, onCancel}: Props): React.ReactE
     >
       <Box flexDirection="column" borderStyle='round' borderDimColor flexGrow={1} overflow="hidden">
         {/* Header row */}
-        <Box paddingX={1}><Text bold color="#229ac3">Resume a session ({sessions.length} total)</Text></Box>
+        <Box paddingX={1}>
+          <Text bold color="black">Resume a session</Text>
+          <Text bold color="#229ac3"> ({sessions.length} total)</Text>
+        </Box>
         {/* Session list */}
         <Box borderTop={true} borderBottom={true} borderLeft={false} borderRight={false} borderStyle='round'
              borderDimColor flexDirection='column' flexGrow={1} paddingX={1} overflow="hidden">

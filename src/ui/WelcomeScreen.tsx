@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState} from "react";
 import { Box, Text } from "ink";
-import * as os from "os";
-import * as path from "path";
+import * as os from "node:os";
+import path from 'node:path';
 import type { SkillInfo } from "../session";
 import type { ResolvedDeepcodingSettings } from "../settings";
 import {
@@ -17,6 +17,7 @@ type WelcomeScreenProps = {
   skills: SkillInfo[];
   version: string;
   width: number;
+  rootDirectoryWarning: string | null;
 };
 
 const TITLE_PANEL_WIDTH = 70;
@@ -36,7 +37,8 @@ export function WelcomeScreen({
   settings,
   skills,
   version,
-  width
+  width,
+  rootDirectoryWarning
 }: WelcomeScreenProps): React.ReactElement {
   const tips = useMemo(() => buildWelcomeTips(skills), [skills]);
   const [tipIndex] = useState(() => randomTipIndex(tips.length));
@@ -88,13 +90,21 @@ export function WelcomeScreen({
         </Box>
       </Box>
 
-      {tip ? (
-        <Box marginTop={1}>
-          <Text dimColor>
-            Tips: {tip.label} - {tip.description}
-          </Text>
-        </Box>
-      ) : null}
+      <Box flexDirection='column' width={panelWidth} paddingX={1}>
+        {tip ? (
+          <Box marginTop={1}>
+            <Text dimColor>
+              Tips: {tip.label} - {tip.description}
+            </Text>
+          </Box>
+        ) : null}
+
+        {rootDirectoryWarning ? (
+          <Box marginTop={1} borderStyle='round' borderColor='yellow' paddingX={1}>
+            <Text color="yellow">{rootDirectoryWarning}</Text>
+          </Box>
+        ) : null}
+      </Box>
     </Box>
   );
 }

@@ -1,15 +1,11 @@
-import React, { useMemo, useState} from "react";
-import { Box, Text } from "ink";
+import React, {useMemo, useState} from "react";
+import {Box, Text} from "ink";
 import * as os from "node:os";
 import path from 'node:path';
-import type { SkillInfo } from "../session";
-import type { ResolvedDeepcodingSettings } from "../settings";
-import {
-  BUILTIN_SLASH_COMMANDS,
-  buildSlashCommands,
-  formatSlashCommandDescription
-} from "./slashCommands";
-import { ThemedGradient } from "./ThemedGradient";
+import type {SkillInfo} from "../session";
+import type {ResolvedDeepcodingSettings} from "../settings";
+import {buildSlashCommands, BUILTIN_SLASH_COMMANDS, formatSlashCommandDescription} from "./slashCommands";
+import {ThemedGradient} from "./ThemedGradient";
 
 type WelcomeScreenProps = {
   projectRoot: string;

@@ -127,11 +127,11 @@ function characterWidth(char: string): number {
 export function usePromptTerminalCursor(
   stdout: NodeJS.WriteStream | undefined,
   placement: CursorPlacement,
-  isActive: boolean,
-  layoutKey?: boolean
+  isActive: boolean
 ): void {
   const directWriteRef = useRef<((data: string) => void) | null>(null);
   const activePlacementRef = useRef<CursorPlacement | null>(null);
+  const lastPlacementRef = useRef<CursorPlacement | null>(null);
   const unmountingRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -154,6 +154,19 @@ export function usePromptTerminalCursor(
       }
       directWrite("\r" + cursorDown(activePlacement.rowsUp) + hideCursor());
       activePlacementRef.current = null;
+      // Schedule a deferred re-position in case the layout effect does not
+      // re-run (e.g. a dropdown closed without changing the buffer).
+      Promise.resolve().then(() => {
+        if (unmountingRef.current || activePlacementRef.current) {
+          return;
+        }
+        const latest = directWriteRef.current;
+        const p = lastPlacementRef.current;
+        if (latest && p) {
+          latest(showCursor() + cursorUp(p.rowsUp) + "\r" + cursorForward(p.column));
+          activePlacementRef.current = p;
+        }
+      });
     };
     const patchedWrite: WriteFn = (...args) => {
       restorePromptCursor();
@@ -183,6 +196,7 @@ export function usePromptTerminalCursor(
 
     directWrite(showCursor() + cursorUp(placement.rowsUp) + "\r" + cursorForward(placement.column));
     activePlacementRef.current = placement;
+    lastPlacementRef.current = placement;
 
     return () => {
       unmountingRef.current = true;
@@ -193,7 +207,7 @@ export function usePromptTerminalCursor(
       directWrite("\r" + cursorDown(activePlacement.rowsUp) + hideCursor());
       activePlacementRef.current = null;
     };
-  }, [isActive, placement.column, placement.rowsUp, stdout, layoutKey]);
+  }, [isActive, placement.column, placement.rowsUp, stdout]);
 }
 
 export function useTerminalFocusReporting(stdout: NodeJS.WriteStream | undefined, isActive: boolean): void {

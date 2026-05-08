@@ -142,3 +142,17 @@ export function readClipboardImage(): ClipboardImage | null {
 
   return null;
 }
+
+export async function readClipboardImageAsync(): Promise<ClipboardImage | null> {
+  return new Promise((resolve) => {
+    // 使用 setImmediate 确保不会阻塞事件循环
+    setImmediate(() => {
+      try {
+        const result = readClipboardImage();
+        resolve(result);
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}

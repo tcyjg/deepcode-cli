@@ -123,8 +123,7 @@ export const PromptInput = React.memo(function PromptInput({
   );
 
   useTerminalFocusReporting(stdout, !disabled);
-  const layoutKey = showSkillsDropdown || showMenu;
-  usePromptTerminalCursor(stdout, cursorPlacement, !disabled, layoutKey);
+  usePromptTerminalCursor(stdout, cursorPlacement, !disabled);
 
   useEffect(() => {
     if (!showMenu) {

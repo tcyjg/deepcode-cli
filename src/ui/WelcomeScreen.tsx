@@ -13,7 +13,7 @@ type WelcomeScreenProps = {
   skills: SkillInfo[];
   version: string;
   width: number;
-  rootDirectoryWarning: string | null;
+  rootDirectoryWarning?: string | null;
 };
 
 const TITLE_PANEL_WIDTH = 70;
@@ -34,7 +34,6 @@ export function WelcomeScreen({
   skills,
   version,
   width,
-  rootDirectoryWarning
 }: WelcomeScreenProps): React.ReactElement {
   const tips = useMemo(() => buildWelcomeTips(skills), [skills]);
   const [tipIndex] = useState(() => randomTipIndex(tips.length));
@@ -85,12 +84,6 @@ export function WelcomeScreen({
           </Box>
         </Box>
       </Box>
-
-      {rootDirectoryWarning ? (
-        <Box flexDirection='column' width={panelWidth} paddingX={1} marginTop={1}>
-          <Text color='yellow'>{rootDirectoryWarning}</Text>
-        </Box>
-      ) : null}
 
       <Box flexDirection='column' width={panelWidth} paddingX={1}>
         {tip ? (

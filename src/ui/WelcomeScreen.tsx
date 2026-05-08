@@ -98,12 +98,6 @@ export function WelcomeScreen({
             </Text>
           </Box>
         ) : null}
-
-        {rootDirectoryWarning ? (
-          <Box marginTop={1} borderStyle='round' borderColor='yellow' paddingX={1}>
-            <Text color="yellow">{rootDirectoryWarning}</Text>
-          </Box>
-        ) : null}
       </Box>
     </Box>
   );

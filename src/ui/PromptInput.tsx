@@ -34,7 +34,7 @@ export { useTerminalInput, parseTerminalInput } from "./prompt";
 export type { InputKey } from "./prompt";
 
 import type { InputKey } from "./prompt";
-import { useHiddenTerminalCursor, useTerminalFocusReporting } from "./prompt/cursor";
+import { useTerminalInput, useHiddenTerminalCursor, useTerminalFocusReporting } from "./prompt/cursor";
 import SlashCommandMenu from "./SlashCommandMenu";
 
 export type PromptSubmission = {
@@ -533,7 +533,6 @@ export const PromptInput = React.memo(function PromptInput({
     setBuffer((state) => removeCurrentSlashToken(state));
   }
 
-  const divider = useMemo(() => "─".repeat(screenWidth), [screenWidth]);
   const visibleSkillStart = Math.min(
     Math.max(0, skillsDropdownIndex - 7),
     Math.max(0, skills.length - 8)
@@ -555,12 +554,15 @@ export const PromptInput = React.memo(function PromptInput({
         </Box>
       ) : null}
       {/* Input */}
-      <Text dimColor wrap="truncate-end">{divider}</Text>
-      <Box>
+      <Box borderStyle="single"
+           borderTop={true}
+           borderBottom={true}
+           borderLeft={false}
+           borderRight={false}
+           borderDimColor>
         <PromptPrefixLine busy={busy} />
         <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder)}</Text>
       </Box>
-      <Text dimColor wrap="truncate-end">{divider}</Text>
       {showSkillsDropdown ? (
         <Box flexDirection="column" marginBottom={1}>
           <Text color="magenta" bold>Select Skills</Text>
@@ -648,6 +650,26 @@ export function removeCurrentSlashToken(state: PromptBufferState): PromptBufferS
 
 export function isClearImageAttachmentsShortcut(input: string, key: Pick<InputKey, "ctrl">): boolean {
   return key.ctrl && (input === "x" || input === "X");
+}
+
+function BufferWithCursor({ state, isFocused, placeholder }: {
+  state: PromptBufferState;
+  isFocused: boolean;
+  placeholder?: string;
+}): React.ReactElement {
+  const text = state.text || "";
+
+  if (text.length === 0 && placeholder) {
+    return <Text key={state.cursor} dimColor>{`  ${placeholder}`}</Text>;
+  }
+
+  if (!isFocused) {
+    return <Text key={state.cursor}>{text.endsWith("\n") ? `${text} ` : text}</Text>;
+  }
+
+  // Render text normally. The terminal hardware cursor (positioned by
+  // usePromptTerminalCursor) provides the blinking cursor feedback.
+  return <Text key={state.cursor}>{text}</Text>;
 }
 
 export function renderBufferWithCursor(state: PromptBufferState, isFocused: boolean, placeholder?: string): string {

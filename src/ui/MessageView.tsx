@@ -67,7 +67,7 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
     const summary = buildToolSummary(message);
     const diffLines = getToolDiffPreviewLines(summary);
     return (
-      <Box flexDirection="column" marginBottom={1} marginY={0}>
+      <Box flexDirection="column" marginLeft={1} marginBottom={1} marginY={0}>
         <StatusLine
           bulletColor={summary.ok ? "green" : "red"}
           name={formatStatusName(summary.name)}
@@ -81,14 +81,14 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
   if (message.role === "system") {
     if (message.meta?.skill) {
       return (
-        <Box marginY={0} marginBottom={1}>
+        <Box marginY={0} marginLeft={1} marginBottom={1}>
           <Text color="magenta">⚡ Loaded skill: {message.meta.skill.name}</Text>
         </Box>
       );
     }
     if (message.meta?.isSummary) {
       return (
-        <Box marginY={0} marginBottom={1}>
+        <Box marginY={0} marginLeft={1} marginBottom={1}>
           <Text dimColor italic>(conversation summary inserted)</Text>
         </Box>
       );

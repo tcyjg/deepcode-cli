@@ -434,7 +434,9 @@ export const PromptInput = React.memo(function PromptInput({
     }
 
     if (input && !key.ctrl && !key.meta) {
-      const sanitized = input.replace(/\r/g, "");
+      // Normalize line endings from paste: \r\n (Windows) → \n, \r (old macOS/Enter) → \n.
+      // This preserves multi-line formatting when the user pastes content.
+      const sanitized = input.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       updateBuffer((s) => insertText(s, sanitized));
     }
   }, { isActive: !disabled });

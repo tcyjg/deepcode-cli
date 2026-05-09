@@ -40,17 +40,11 @@ function disableTerminalFocusReporting(): string {
   return "\u001B[?1004l";
 }
 
-/**
- * Calculate where the terminal hardware cursor should be placed relative to
- * the Ink-rendered inverse cursor cell.  The returned {@code rowsUp} and
- * {@code column} values are used by {@link usePromptTerminalCursor} to
- * position the terminal's blinking cursor on top of the simulated inverse cell.
- */
 export function getPromptCursorPlacement(
   state: PromptBufferState,
   screenWidth: number,
   prefixWidth: number,
-  belowRows: number
+  footerText: string
 ): CursorPlacement {
   const width = Math.max(1, screenWidth);
   const cursor = Math.max(0, Math.min(state.cursor, state.text.length));
@@ -61,14 +55,15 @@ export function getPromptCursorPlacement(
 
   const cursorPosition = measureTextPosition(beforeCursor, width, prefixWidth);
   const promptRows = measureTextRows(displayText, width, prefixWidth);
+  const footerRows = 1 + measureTextRows(footerText, width, 0);
 
   return {
-    rowsUp: (promptRows - 1 - cursorPosition.row) + belowRows + 1,
+    rowsUp: (promptRows - 1 - cursorPosition.row) + footerRows + 1,
     column: cursorPosition.column
   };
 }
 
-export function measureTextRows(text: string, width: number, initialColumn: number): number {
+function measureTextRows(text: string, width: number, initialColumn: number): number {
   return measureTextPosition(text, width, initialColumn).row + 1;
 }
 
@@ -136,12 +131,11 @@ export function usePromptTerminalCursor(
 ): void {
   const directWriteRef = useRef<((data: string) => void) | null>(null);
   const activePlacementRef = useRef<CursorPlacement | null>(null);
+  const lastPlacementRef = useRef<CursorPlacement | null>(null);
   const unmountingRef = useRef(false);
 
-  // Patch stdout.write to hide the cursor before every write. This prevents
-  // the terminal cursor from appearing mid-render at the wrong position.
   useLayoutEffect(() => {
-    if (!isActive || !stdout?.isTTY) {
+    if (!stdout?.isTTY) {
       return;
     }
 
@@ -150,27 +144,45 @@ export function usePromptTerminalCursor(
     const directWrite = (data: string) => {
       originalWrite.call(stdout, data);
     };
-
-    directWriteRef.current = directWrite;
-
-    const patchedWrite: WriteFn = (...args) => {
-      // Before each write, move the cursor back to the bottom and hide it.
-      if (!unmountingRef.current && activePlacementRef.current) {
-        directWrite("\r" + cursorDown(activePlacementRef.current.rowsUp) + hideCursor());
-        activePlacementRef.current = null;
+    const restorePromptCursor = () => {
+      if (unmountingRef.current) {
+        return;
       }
+      const activePlacement = activePlacementRef.current;
+      if (!activePlacement) {
+        return;
+      }
+      directWrite("\r" + cursorDown(activePlacement.rowsUp) + hideCursor());
+      activePlacementRef.current = null;
+      // Schedule a deferred re-position in case the layout effect does not
+      // re-run (e.g. a dropdown closed without changing the buffer).
+      Promise.resolve().then(() => {
+        if (unmountingRef.current || activePlacementRef.current) {
+          return;
+        }
+        const latest = directWriteRef.current;
+        const p = lastPlacementRef.current;
+        if (latest && p) {
+          latest(showCursor() + cursorUp(p.rowsUp) + "\r" + cursorForward(p.column));
+          activePlacementRef.current = p;
+        }
+      });
+    };
+    const patchedWrite: WriteFn = (...args) => {
+      restorePromptCursor();
       return originalWrite.apply(stdout, args);
     };
 
+    directWriteRef.current = directWrite;
     stream.write = patchedWrite;
+
     return () => {
-      unmountingRef.current = true;
+      restorePromptCursor();
       stream.write = originalWrite;
       directWriteRef.current = null;
     };
-  }, [isActive, stdout]);
+  }, [stdout]);
 
-  // Show and position the terminal cursor after each render.
   useLayoutEffect(() => {
     if (!isActive || !stdout?.isTTY) {
       return;
@@ -184,17 +196,32 @@ export function usePromptTerminalCursor(
 
     directWrite(showCursor() + cursorUp(placement.rowsUp) + "\r" + cursorForward(placement.column));
     activePlacementRef.current = placement;
+    lastPlacementRef.current = placement;
 
     return () => {
       unmountingRef.current = true;
-      const p = activePlacementRef.current;
-      if (!p) {
+      lastPlacementRef.current = null;
+      const activePlacement = activePlacementRef.current;
+      if (!activePlacement) {
         return;
       }
-      directWrite("\r" + cursorDown(p.rowsUp) + hideCursor());
+      directWrite("\r" + cursorDown(activePlacement.rowsUp) + hideCursor());
       activePlacementRef.current = null;
     };
-  }, [isActive, placement.rowsUp, placement.column, stdout]);
+  }, [isActive, placement.column, placement.rowsUp, stdout]);
+}
+
+export function useHiddenTerminalCursor(stdout: NodeJS.WriteStream | undefined, isActive: boolean): void {
+  useLayoutEffect(() => {
+    if (!isActive || !stdout?.isTTY) {
+      return;
+    }
+
+    stdout.write(hideCursor());
+    return () => {
+      stdout.write(showCursor());
+    };
+  }, [isActive, stdout]);
 }
 
 export function useTerminalFocusReporting(stdout: NodeJS.WriteStream | undefined, isActive: boolean): void {

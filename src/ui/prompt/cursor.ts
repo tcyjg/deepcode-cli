@@ -211,6 +211,19 @@ export function usePromptTerminalCursor(
   }, [isActive, placement.column, placement.rowsUp, stdout]);
 }
 
+export function useHiddenTerminalCursor(stdout: NodeJS.WriteStream | undefined, isActive: boolean): void {
+  useLayoutEffect(() => {
+    if (!isActive || !stdout?.isTTY) {
+      return;
+    }
+
+    stdout.write(hideCursor());
+    return () => {
+      stdout.write(showCursor());
+    };
+  }, [isActive, stdout]);
+}
+
 export function useTerminalFocusReporting(stdout: NodeJS.WriteStream | undefined, isActive: boolean): void {
   useLayoutEffect(() => {
     if (!isActive || !stdout?.isTTY) {

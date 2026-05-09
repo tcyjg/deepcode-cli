@@ -37,7 +37,7 @@ export type { InputKey } from "./prompt";
 
 import { useTerminalInput, parseTerminalInput } from "./prompt";
 import type { InputKey } from "./prompt";
-import { usePromptTerminalCursor, useTerminalFocusReporting, getPromptCursorPlacement } from "./prompt/cursor";
+import { useHiddenTerminalCursor, useTerminalFocusReporting } from "./prompt/cursor";
 
 export type PromptSubmission = {
   text: string;
@@ -117,13 +117,8 @@ export const PromptInput = React.memo(function PromptInput({
         ? loadingText
         : "esc to interrupt · ctrl+c to cancel input"
       : "enter send · shift+enter newline · ctrl+v image · / commands · ctrl+d exit";
-  const cursorPlacement = React.useMemo(
-    () => getPromptCursorPlacement(buffer, screenWidth, PROMPT_PREFIX_WIDTH, footerText),
-    [buffer, footerText, screenWidth]
-  );
-
   useTerminalFocusReporting(stdout, !disabled);
-  usePromptTerminalCursor(stdout, cursorPlacement, !disabled);
+  useHiddenTerminalCursor(stdout, !disabled);
 
   useEffect(() => {
     if (!showMenu) {
@@ -676,7 +671,7 @@ export function renderBufferWithCursor(state: PromptBufferState, isFocused: bool
   const after = text.slice(cursor + 1);
 
   if (text.length === 0 && placeholder) {
-    return chalk.dim("  " +placeholder);
+    return chalk.dim(`  ${placeholder}`);
   }
 
   if (!isFocused) {
@@ -684,10 +679,16 @@ export function renderBufferWithCursor(state: PromptBufferState, isFocused: bool
   }
 
   if (typeof at === "undefined") {
-    return before + chalk.inverse(" ");
+    return before + renderCursorCell(" ");
   }
   if (at === "\n") {
-    return before + chalk.inverse(" ") + "\n" + after;
+    return before + renderCursorCell(" ") + "\n" + after;
   }
-  return before + chalk.inverse(at) + after;
+  return before + renderCursorCell(at) + after;
+}
+
+// Use explicit ANSI instead of chalk.inverse so cursor rendering stays enabled
+// in non-TTY environments such as tests, where Chalk may strip styling.
+function renderCursorCell(value: string): string {
+  return `\u001B[7m${value}\u001B[27m`;
 }

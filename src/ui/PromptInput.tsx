@@ -671,7 +671,10 @@ export function renderBufferWithCursor(state: PromptBufferState, isFocused: bool
   const after = text.slice(cursor + 1);
 
   if (text.length === 0 && placeholder) {
-    return chalk.dim(`  ${placeholder}`);
+    if (!isFocused) {
+      return chalk.dim(`  ${placeholder}`);
+    }
+    return renderCursorCell(" ") + chalk.dim(` ${placeholder}`);
   }
 
   if (!isFocused) {

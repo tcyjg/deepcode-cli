@@ -111,6 +111,7 @@ test("renderBufferWithCursor hides the simulated cursor when unfocused", () => {
 
 test("renderBufferWithCursor draws the simulated cursor when focused", () => {
   assert.equal(stripAnsi(renderBufferWithCursor({ text: "", cursor: 0 }, true)), " ");
+  assert.equal(stripAnsi(renderBufferWithCursor({ text: "", cursor: 0 }, true, "Ask anything")), "  Ask anything");
   assert.equal(stripAnsi(renderBufferWithCursor({ text: "hello", cursor: 5 }, true)), "hello ");
   assert.equal(stripAnsi(renderBufferWithCursor({ text: "hello", cursor: 1 }, true)), "hello");
   assert.equal(stripAnsi(renderBufferWithCursor({ text: "hello\n", cursor: 6 }, true)), "hello\n ");
@@ -119,6 +120,7 @@ test("renderBufferWithCursor draws the simulated cursor when focused", () => {
 
 test("renderBufferWithCursor styles exactly one simulated cursor", () => {
   assert.equal((renderBufferWithCursor({ text: "", cursor: 0 }, true).match(ANSI_RE) ?? []).length, 2);
+  assert.ok(renderBufferWithCursor({ text: "", cursor: 0 }, true, "Ask anything").includes("\u001B[7m \u001B[27m"));
   assert.equal((renderBufferWithCursor({ text: "hello", cursor: 1 }, true).match(ANSI_RE) ?? []).length, 2);
   assert.equal((renderBufferWithCursor({ text: "hello\nworld", cursor: 6 }, true).match(ANSI_RE) ?? []).length, 2);
 });

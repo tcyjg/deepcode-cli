@@ -16,6 +16,7 @@
   "files": [
     "dist/cli.js",
     "docs/tools/**",
+    "docs/prompts/**",
     "README.md",
     "LICENSE"
   ],
@@ -32,6 +33,7 @@
   },
   "dependencies": {
     "chalk": "^5.6.2",
+    "ejs": "^5.0.2",
     "gradient-string": "^3.0.0",
     "gray-matter": "^4.0.3",
     "ignore": "^7.0.5",

@@ -2,6 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as crypto from "crypto";
+import { createRequire } from "module";
+import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
 import { launchNotifyScript } from "./notify";
@@ -16,6 +18,10 @@ const MAX_SESSION_ENTRIES = 50;
 const DEFAULT_NEW_PROMPT_API_URL = "https://deepcode.vegamo.cn/api/plugin/new";
 const DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD = 128 * 1024;
 const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 512 * 1024;
+const require = createRequire(import.meta.url);
+const ejs = require("ejs") as {
+  render: (template: string, data?: Record<string, unknown>) => string;
+};
 
 type ChatCompletionDebugOptions = {
   enabled?: boolean;
@@ -68,6 +74,15 @@ function accumulateUsage(current: unknown | null, next: unknown | null | undefin
     return current ?? null;
   }
   return addUsageValue(current, next);
+}
+
+function getExtensionRoot(): string {
+  if (typeof __dirname !== "undefined") {
+    return path.resolve(__dirname, "..");
+  }
+
+  const currentFilePath = fileURLToPath(import.meta.url);
+  return path.resolve(path.dirname(currentFilePath), "..");
 }
 
 function getTotalTokens(usage: unknown | null | undefined): number {
@@ -769,6 +784,7 @@ The candidate skills are as follows:\n\n`;
     this.reportNewPrompt();
     const signal = controller?.signal;
     this.throwIfAborted(signal);
+    this.applyInitCommandPrompt(userPrompt);
 
     if (userPrompt.text) {
       const skills = await this.listSkills();
@@ -861,6 +877,7 @@ ${skillMd}
   async replySession(sessionId: string, userPrompt: UserPromptContent, controller?: AbortController): Promise<void> {
     const signal = controller?.signal;
     this.throwIfAborted(signal);
+    this.applyInitCommandPrompt(userPrompt);
     const now = new Date().toISOString();
     const updated = this.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
@@ -1452,27 +1469,69 @@ ${skillMd}
     };
   }
 
-  private loadAgentInstructions(): string | null {
+  private applyInitCommandPrompt(userPrompt: UserPromptContent): void {
+    if (userPrompt.text !== "/init") {
+      return;
+    }
+    userPrompt.text = this.renderInitCommandPrompt();
+  }
+
+  private renderInitCommandPrompt(): string {
+    const templatePath = path.join(getExtensionRoot(), "docs", "prompts", "init_command.md.ejs");
+    const template = fs.readFileSync(templatePath, "utf8");
+    return ejs.render(template, {
+      agentsMdFile: this.getEffectiveProjectAgentsMdFile()
+    });
+  }
+
+  private getEffectiveProjectAgentsMdFile(): string | null {
+    return this.loadProjectAgentInstructions()?.displayPath ?? null;
+  }
+
+  private loadProjectAgentInstructions(): { content: string; displayPath: string } | null {
     const candidatePaths = [
-      path.join(this.projectRoot, "AGENTS.md"),
-      path.join(os.homedir(), ".deepcode", "AGENTS.md")
+      {
+        absolutePath: path.join(this.projectRoot, ".deepcode", "AGENTS.md"),
+        displayPath: "./.deepcode/AGENTS.md"
+      },
+      {
+        absolutePath: path.join(this.projectRoot, "AGENTS.md"),
+        displayPath: "./AGENTS.md"
+      }
     ];
 
     for (const candidatePath of candidatePaths) {
-      try {
-        if (!fs.existsSync(candidatePath)) {
-          continue;
-        }
-        const content = fs.readFileSync(candidatePath, "utf8").trim();
-        if (content) {
-          return content;
-        }
-      } catch {
-        continue;
+      const content = this.readNonEmptyFile(candidatePath.absolutePath);
+      if (content) {
+        return {
+          content,
+          displayPath: candidatePath.displayPath
+        };
       }
     }
 
     return null;
+  }
+
+  private readNonEmptyFile(filePath: string): string | null {
+    try {
+      if (!fs.existsSync(filePath)) {
+        return null;
+      }
+      const content = fs.readFileSync(filePath, "utf8").trim();
+      return content || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private loadAgentInstructions(): string | null {
+    const projectInstructions = this.loadProjectAgentInstructions();
+    if (projectInstructions) {
+      return projectInstructions.content;
+    }
+
+    return this.readNonEmptyFile(path.join(os.homedir(), ".deepcode", "AGENTS.md"));
   }
 
   private buildSystemMessage(

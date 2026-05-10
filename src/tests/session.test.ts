@@ -329,6 +329,74 @@ test("SessionManager lists project skills from .agents with legacy .deepcode com
   assert.equal(sharedSkill?.description, "Project .agents skill");
 });
 
+test("createSession expands /init with the active .deepcode project AGENTS path", async () => {
+  const workspace = createTempDir("deepcode-init-deepcode-workspace-");
+  const home = createTempDir("deepcode-init-deepcode-home-");
+  process.env.HOME = home;
+  globalThis.fetch = (async () => ({ ok: true, text: async () => "" }) as Response) as typeof fetch;
+
+  fs.mkdirSync(path.join(workspace, ".deepcode"), { recursive: true });
+  fs.writeFileSync(path.join(workspace, ".deepcode", "AGENTS.md"), "deepcode project instructions", "utf8");
+  fs.writeFileSync(path.join(workspace, "AGENTS.md"), "root project instructions", "utf8");
+
+  const manager = createSessionManager(workspace, "machine-id-init-deepcode");
+  (manager as any).activateSession = async () => {};
+
+  const sessionId = await manager.createSession({ text: "/init" });
+  const messages = manager.listSessionMessages(sessionId);
+  const userMessage = messages.find((message) => message.role === "user");
+  const systemContents = messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content ?? "");
+
+  assert.match(userMessage?.content ?? "", /Update \.\/\.deepcode\/AGENTS\.md/);
+  assert.doesNotMatch(userMessage?.content ?? "", /Update \.\/AGENTS\.md/);
+  assert.ok(systemContents.includes("deepcode project instructions"));
+  assert.ok(!systemContents.includes("root project instructions"));
+});
+
+test("replySession expands /init with the active root project AGENTS path", async () => {
+  const workspace = createTempDir("deepcode-init-root-workspace-");
+  const home = createTempDir("deepcode-init-root-home-");
+  process.env.HOME = home;
+  globalThis.fetch = (async () => ({ ok: true, text: async () => "" }) as Response) as typeof fetch;
+
+  fs.writeFileSync(path.join(workspace, "AGENTS.md"), "root project instructions", "utf8");
+
+  const manager = createSessionManager(workspace, "machine-id-init-root");
+  (manager as any).activateSession = async () => {};
+
+  const sessionId = await manager.createSession({ text: "first prompt" });
+  await manager.replySession(sessionId, { text: "/init" });
+  const userMessages = manager
+    .listSessionMessages(sessionId)
+    .filter((message) => message.role === "user");
+  const replyMessage = userMessages[userMessages.length - 1];
+
+  assert.match(replyMessage?.content ?? "", /Update \.\/AGENTS\.md/);
+});
+
+test("createSession expands /init as generate when no project AGENTS file is effective", async () => {
+  const workspace = createTempDir("deepcode-init-generate-workspace-");
+  const home = createTempDir("deepcode-init-generate-home-");
+  process.env.HOME = home;
+  globalThis.fetch = (async () => ({ ok: true, text: async () => "" }) as Response) as typeof fetch;
+
+  fs.mkdirSync(path.join(home, ".deepcode"), { recursive: true });
+  fs.writeFileSync(path.join(home, ".deepcode", "AGENTS.md"), "user instructions", "utf8");
+
+  const manager = createSessionManager(workspace, "machine-id-init-generate");
+  (manager as any).activateSession = async () => {};
+
+  const sessionId = await manager.createSession({ text: "/init" });
+  const userMessage = manager
+    .listSessionMessages(sessionId)
+    .find((message) => message.role === "user");
+
+  assert.match(userMessage?.content ?? "", /Generate a file named \.\/AGENTS\.md/);
+  assert.doesNotMatch(userMessage?.content ?? "", /Update \.\/AGENTS\.md/);
+});
+
 test("createSession reports a new prompt with the machineId token", async () => {
   const workspace = createTempDir("deepcode-session-workspace-");
   const home = createTempDir("deepcode-session-home-");

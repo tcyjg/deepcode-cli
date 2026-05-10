@@ -38,13 +38,13 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
       const summary = buildThinkingSummary(content, message.messageParams);
       if (collapsed !== false) {
         return (
-          <Box marginY={0}>
+          <Box marginLeft={1} marginY={0}>
             <StatusLine bulletColor="gray" name="Thinking" params={summary} />
           </Box>
         );
       }
       return (
-        <Box  marginLeft={1} flexDirection="column" marginY={0}>
+        <Box marginLeft={1} flexDirection="column" marginY={0}>
           <StatusLine bulletColor="gray" name="Thinking" params={summary} />
           <Box flexDirection="column">
             {content ? <Text dimColor>{renderMarkdown(content)}</Text> : null}
@@ -67,7 +67,7 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
     const summary = buildToolSummary(message);
     const diffLines = getToolDiffPreviewLines(summary);
     return (
-      <Box flexDirection="column" marginBottom={1} marginY={0}>
+      <Box flexDirection="column" marginLeft={1} marginBottom={1} marginY={0}>
         <StatusLine
           bulletColor={summary.ok ? "green" : "red"}
           name={formatStatusName(summary.name)}
@@ -81,14 +81,14 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
   if (message.role === "system") {
     if (message.meta?.skill) {
       return (
-        <Box marginY={0} marginBottom={1}>
+        <Box marginY={0} marginLeft={1} marginBottom={1}>
           <Text color="magenta">⚡ Loaded skill: {message.meta.skill.name}</Text>
         </Box>
       );
     }
     if (message.meta?.isSummary) {
       return (
-        <Box marginY={0} marginBottom={1}>
+        <Box marginY={0} marginLeft={1} marginBottom={1}>
           <Text dimColor italic>(conversation summary inserted)</Text>
         </Box>
       );
@@ -111,7 +111,7 @@ function StatusLine({
   return (
     <Text wrap="truncate-end">
       {[
-        <Text key="bullet" color={bulletColor}>•</Text>,
+        <Text key="bullet" color={bulletColor}>✧</Text>,
         " ",
         <Text key="name" bold>{name}</Text>,
         params ? <Text key="params" color="white">{`  ${params}`}</Text> : null

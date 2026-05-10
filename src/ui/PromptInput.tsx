@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useState} from "react";
 import { Box, Text, useApp, useStdout } from "ink";
 import chalk from "chalk";
 import {
@@ -25,8 +25,6 @@ import {
   buildSlashCommands,
   filterSlashCommands,
   findExactSlashCommand,
-  formatSlashCommandDescription,
-  formatSlashCommandLabel
 } from "./slashCommands";
 import { readClipboardImageAsync } from "./clipboard";
 import type { SkillInfo } from "../session";
@@ -37,7 +35,8 @@ export type { InputKey } from "./prompt";
 
 import { useTerminalInput, parseTerminalInput } from "./prompt";
 import type { InputKey } from "./prompt";
-import { useHiddenTerminalCursor, useTerminalFocusReporting } from "./prompt/cursor";
+import { useHiddenTerminalCursor, useTerminalFocusReporting } from "./prompt";
+import SlashCommandMenu from "./SlashCommandMenu";
 
 export type PromptSubmission = {
   text: string;
@@ -59,7 +58,6 @@ type Props = {
 };
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-const PROMPT_PREFIX_WIDTH = 2;
 
 const PromptPrefixLine = React.memo(function PromptPrefixLine({ busy }: { busy: boolean }): React.ReactElement {
   const [spinnerIndex, setSpinnerIndex] = useState(0);
@@ -80,16 +78,16 @@ const PromptPrefixLine = React.memo(function PromptPrefixLine({ busy }: { busy: 
 });
 
 export const PromptInput = React.memo(function PromptInput({
-  skills,
-  screenWidth,
-  promptHistory,
-  busy,
-  loadingText,
-  disabled,
-  placeholder,
-  onSubmit,
-  onInterrupt
-}: Props): React.ReactElement {
+                                                             skills,
+                                                             screenWidth,
+                                                             promptHistory,
+                                                             busy,
+                                                             loadingText,
+                                                             disabled,
+                                                             placeholder,
+                                                             onSubmit,
+                                                             onInterrupt
+                                                           }: Props): React.ReactElement {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [buffer, setBuffer] = useState<PromptBufferState>(EMPTY_BUFFER);
@@ -448,7 +446,7 @@ export const PromptInput = React.memo(function PromptInput({
     }
 
     const text = promptHistory[nextCursor] ?? "";
-    setBuffer({ text, cursor: direction < 0 ? 0 : text.length });
+    setBuffer({ text, cursor: text.length });
     setHistoryCursor(nextCursor);
   }
 
@@ -535,7 +533,6 @@ export const PromptInput = React.memo(function PromptInput({
     setBuffer((state) => removeCurrentSlashToken(state));
   }
 
-  const divider = useMemo(() => "─".repeat(screenWidth), [screenWidth]);
   const visibleSkillStart = Math.min(
     Math.max(0, skillsDropdownIndex - 7),
     Math.max(0, skills.length - 8)
@@ -556,6 +553,16 @@ export const PromptInput = React.memo(function PromptInput({
           <Text dimColor> (use /skills to edit)</Text>
         </Box>
       ) : null}
+      {/* Input */}
+      <Box borderStyle="single"
+           borderTop={true}
+           borderBottom={true}
+           borderLeft={false}
+           borderRight={false}
+           borderDimColor>
+        <PromptPrefixLine busy={busy} />
+        <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder)}</Text>
+      </Box>
       {showSkillsDropdown ? (
         <Box flexDirection="column" marginBottom={1}>
           <Text color="magenta" bold>Select Skills</Text>
@@ -581,31 +588,13 @@ export const PromptInput = React.memo(function PromptInput({
           {visibleSkillStart + visibleSkills.length < skills.length ? (
             <Text dimColor>… {skills.length - visibleSkillStart - visibleSkills.length} more</Text>
           ) : null}
-          <Text dimColor>space toggle · enter toggle · esc close</Text>
+          <Text dimColor>space toggle · enter toggle · esc to close</Text>
         </Box>
       ) : null}
-      {showMenu ? (
-        <Box flexDirection="column" marginBottom={1}>
-          {slashMenu.slice(0, 8).map((item, idx) => (
-            <Text key={item.label} color={idx === menuIndex ? "cyanBright" : undefined} wrap="truncate-end">
-              {idx === menuIndex ? "› " : "  "}
-              <Text bold>{formatSlashCommandLabel(item)}</Text>
-              <Text dimColor>  {formatSlashCommandDescription(item.description)}</Text>
-            </Text>
-          ))}
-          {slashMenu.length > 8 ? <Text dimColor>… {slashMenu.length - 8} more</Text> : null}
-        </Box>
-      ) : null}
-      {/* Input */}
-      <Text dimColor wrap="truncate-end">{divider}</Text>
-      <Box>
-        <PromptPrefixLine busy={busy} />
-        <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder)}</Text>
-      </Box>
-      <Text dimColor wrap="truncate-end">{divider}</Text>
-      <Box>
+      <SlashCommandMenu width={screenWidth} items={slashMenu} activeIndex={menuIndex} />
+      {!showMenu && <Box>
         <Text dimColor>{footerText}</Text>
-      </Box>
+      </Box>}
     </Box>
   );
 });

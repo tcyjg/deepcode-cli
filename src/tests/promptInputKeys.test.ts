@@ -16,7 +16,7 @@ import {
   parseTerminalInput,
   removeCurrentSlashToken,
   toggleSkillSelection,
-  renderBufferWithCursor
+  renderBufferWithCursor,
 } from "../ui";
 import type { SkillInfo } from "../session";
 

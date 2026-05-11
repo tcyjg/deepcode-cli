@@ -50,16 +50,19 @@ export function getPromptCursorPlacement(
   const cursor = Math.max(0, Math.min(state.cursor, state.text.length));
   const beforeCursor = state.text.slice(0, cursor);
   const at = state.text[cursor];
-  const displayText = beforeCursor + (typeof at === "undefined" || at === "\n" ? " " : at) +
-    (at === "\n" ? "\n" : "") + (typeof at === "undefined" ? "" : state.text.slice(cursor + 1));
+  const displayText =
+    beforeCursor +
+    (typeof at === "undefined" || at === "\n" ? " " : at) +
+    (at === "\n" ? "\n" : "") +
+    (typeof at === "undefined" ? "" : state.text.slice(cursor + 1));
 
   const cursorPosition = measureTextPosition(beforeCursor, width, prefixWidth);
   const promptRows = measureTextRows(displayText, width, prefixWidth);
   const footerRows = 1 + measureTextRows(footerText, width, 0);
 
   return {
-    rowsUp: (promptRows - 1 - cursorPosition.row) + footerRows + 1,
-    column: cursorPosition.column
+    rowsUp: promptRows - 1 - cursorPosition.row + footerRows + 1,
+    column: cursorPosition.column,
   };
 }
 
@@ -208,7 +211,7 @@ export function usePromptTerminalCursor(
       directWrite("\r" + cursorDown(activePlacement.rowsUp) + hideCursor());
       activePlacementRef.current = null;
     };
-  }, [isActive, placement.column, placement.rowsUp, stdout]);
+  }, [isActive, placement, stdout]);
 }
 
 export function useHiddenTerminalCursor(stdout: NodeJS.WriteStream | undefined, isActive: boolean): void {

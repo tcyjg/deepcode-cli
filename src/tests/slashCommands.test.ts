@@ -5,13 +5,13 @@ import {
   filterSlashCommands,
   findExactSlashCommand,
   formatSlashCommandDescription,
-  formatSlashCommandLabel
+  formatSlashCommandLabel,
 } from "../ui";
 import type { SkillInfo } from "../session";
 
 const skills: SkillInfo[] = [
   { name: "skill-writer", path: "~/.agents/skills/skill-writer/SKILL.md", description: "Write a SKILL.md" },
-  { name: "code-review", path: "~/.agents/skills/code-review/SKILL.md", description: "Review code" }
+  { name: "code-review", path: "~/.agents/skills/code-review/SKILL.md", description: "Review code" },
 ];
 
 test("buildSlashCommands prefixes skills before built-ins", () => {
@@ -81,7 +81,7 @@ test("formatSlashCommandDescription keeps descriptions on one line", () => {
 test("formatSlashCommandLabel marks loaded skills", () => {
   const items = buildSlashCommands([
     { name: "loaded", path: "/skills/loaded/SKILL.md", description: "Loaded skill", isLoaded: true },
-    { name: "fresh", path: "/skills/fresh/SKILL.md", description: "Fresh skill" }
+    { name: "fresh", path: "/skills/fresh/SKILL.md", description: "Fresh skill" },
   ]);
 
   assert.equal(formatSlashCommandLabel(items[0]), "/loaded ✓");

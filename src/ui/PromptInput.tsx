@@ -1,9 +1,8 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Text, useApp, useStdout } from "ink";
 import chalk from "chalk";
 import {
   EMPTY_BUFFER,
-  PromptBufferState,
   backspace,
   deleteForward,
   deleteWordBefore,
@@ -18,14 +17,11 @@ import {
   moveRight,
   moveWordLeft,
   moveWordRight,
-  moveUp
+  moveUp,
 } from "./promptBuffer";
-import {
-  SlashCommandItem,
-  buildSlashCommands,
-  filterSlashCommands,
-  findExactSlashCommand,
-} from "./slashCommands";
+import type { PromptBufferState } from "./promptBuffer";
+import { buildSlashCommands, filterSlashCommands, findExactSlashCommand } from "./slashCommands";
+import type { SlashCommandItem } from "./slashCommands";
 import { readClipboardImageAsync } from "./clipboard";
 import type { SkillInfo } from "../session";
 
@@ -33,7 +29,7 @@ import type { SkillInfo } from "../session";
 export { useTerminalInput, parseTerminalInput } from "./prompt";
 export type { InputKey } from "./prompt";
 
-import { useTerminalInput, parseTerminalInput } from "./prompt";
+import { useTerminalInput } from "./prompt";
 import type { InputKey } from "./prompt";
 import { useHiddenTerminalCursor, useTerminalFocusReporting } from "./prompt";
 import SlashCommandMenu from "./SlashCommandMenu";
@@ -78,16 +74,16 @@ const PromptPrefixLine = React.memo(function PromptPrefixLine({ busy }: { busy: 
 });
 
 export const PromptInput = React.memo(function PromptInput({
-                                                             skills,
-                                                             screenWidth,
-                                                             promptHistory,
-                                                             busy,
-                                                             loadingText,
-                                                             disabled,
-                                                             placeholder,
-                                                             onSubmit,
-                                                             onInterrupt
-                                                           }: Props): React.ReactElement {
+  skills,
+  screenWidth,
+  promptHistory,
+  busy,
+  loadingText,
+  disabled,
+  placeholder,
+  onSubmit,
+  onInterrupt,
+}: Props): React.ReactElement {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [buffer, setBuffer] = useState<PromptBufferState>(EMPTY_BUFFER);
@@ -105,7 +101,10 @@ export const PromptInput = React.memo(function PromptInput({
 
   const slashItems = React.useMemo(() => buildSlashCommands(skills), [skills]);
   const slashToken = getCurrentSlashToken(buffer);
-  const slashMenu = showSkillsDropdown ? [] : slashToken ? filterSlashCommands(slashItems, slashToken) : [];
+  const slashMenu = React.useMemo(
+    () => (showSkillsDropdown ? [] : slashToken ? filterSlashCommands(slashItems, slashToken) : []),
+    [showSkillsDropdown, slashToken, slashItems]
+  );
   const showMenu = slashMenu.length > 0;
   const promptHistoryKey = React.useMemo(() => promptHistory.join("\0"), [promptHistory]);
   const footerText = statusMessage
@@ -147,272 +146,277 @@ export const PromptInput = React.memo(function PromptInput({
     setDraftBeforeHistory(null);
   }, [promptHistoryKey]);
 
-  useTerminalInput((input, key) => {
-    if (key.focusIn) {
-      setHasTerminalFocus(true);
-      return;
-    }
-    if (key.focusOut) {
-      setHasTerminalFocus(false);
-      return;
-    }
-
-    if (disabled) {
-      return;
-    }
-
-    if (key.escape) {
-      if (showSkillsDropdown) {
-        setShowSkillsDropdown(false);
+  useTerminalInput(
+    (input, key) => {
+      if (key.focusIn) {
+        setHasTerminalFocus(true);
         return;
       }
-      if (busy) {
-        onInterrupt();
-        setStatusMessage("Interrupting…");
-      }
-      return;
-    }
-
-    if (key.ctrl && (input === "d" || input === "D")) {
-      if (!isEmpty(buffer)) {
-        updateBuffer((s) => deleteForward(s));
+      if (key.focusOut) {
+        setHasTerminalFocus(false);
         return;
       }
-      const now = Date.now();
-      if (pendingExit && now - lastCtrlDAt.current < 2000) {
-        exit();
+
+      if (disabled) {
         return;
       }
-      lastCtrlDAt.current = now;
-      setPendingExit(true);
-      setStatusMessage("press ctrl+d again to exit");
-      return;
-    }
 
-    if (key.ctrl && (input === "c" || input === "C")) {
-      if (busy) {
-        onInterrupt();
-        setStatusMessage("Interrupting…");
-      } else if (!isEmpty(buffer)) {
-        setBuffer(EMPTY_BUFFER);
-      } else {
-        setStatusMessage("press ctrl+d to exit");
-      }
-      return;
-    }
-
-    if (pendingExit && (!key.ctrl || (input !== "d" && input !== "D"))) {
-      setPendingExit(false);
-    }
-
-    if (historyCursor !== -1 && !key.upArrow && !key.downArrow) {
-      exitHistoryBrowsing();
-    }
-
-    if (showSkillsDropdown) {
-      if (skills.length === 0) {
-        setShowSkillsDropdown(false);
-      } else {
-        if (key.upArrow) {
-          setSkillsDropdownIndex((idx) => (idx - 1 + skills.length) % skills.length);
-          return;
-        }
-        if (key.downArrow) {
-          setSkillsDropdownIndex((idx) => (idx + 1) % skills.length);
-          return;
-        }
-        if ((input === " " && !key.ctrl && !key.meta) || (key.return && !key.shift && !key.meta)) {
-          const skill = skills[skillsDropdownIndex];
-          if (skill) {
-            toggleSelectedSkill(skill);
-          }
-          return;
-        }
-        if (key.tab) {
+      if (key.escape) {
+        if (showSkillsDropdown) {
           setShowSkillsDropdown(false);
           return;
         }
-      }
-    }
-
-    if (key.ctrl && (input === "v" || input === "V")) {
-      setStatusMessage("Reading clipboard...");
-      readClipboardImageAsync().then((image) => {
-        if (image) {
-          setImageUrls((prev) => [...prev, image.dataUrl]);
-          setStatusMessage("Attached image from clipboard");
-        } else {
-          setStatusMessage("No image found in clipboard");
+        if (busy) {
+          onInterrupt();
+          setStatusMessage("Interrupting…");
         }
-      }).catch(() => {
-        setStatusMessage("Failed to read clipboard");
-      });
-      return;
-    }
-
-    if (isClearImageAttachmentsShortcut(input, key)) {
-      if (imageUrls.length > 0) {
-        setImageUrls([]);
-        setStatusMessage("Cleared attached images");
-      } else {
-        setStatusMessage("No attached images to clear");
-      }
-      return;
-    }
-
-    const noModifier = !key.shift && !key.ctrl && !key.meta;
-    const isPlainReturn = key.return && !key.shift && !key.meta;
-
-    if (showMenu) {
-      if (key.upArrow) {
-        setMenuIndex((idx) => (idx - 1 + slashMenu.length) % slashMenu.length);
         return;
       }
-      if (key.downArrow) {
-        setMenuIndex((idx) => (idx + 1) % slashMenu.length);
-        return;
-      }
-      if (key.tab || (key.return && !key.shift && !key.meta)) {
-        const selected = slashMenu[menuIndex];
-        if (selected) {
-          handleSlashSelection(selected);
+
+      if (key.ctrl && (input === "d" || input === "D")) {
+        if (!isEmpty(buffer)) {
+          updateBuffer((s) => deleteForward(s));
           return;
         }
-      }
-    }
-
-    if (busy && isPlainReturn) {
-      setStatusMessage("wait for the current response or press esc to interrupt");
-      return;
-    }
-
-    if (key.return) {
-      const isShiftEnter = key.shift || key.meta;
-      if (isShiftEnter) {
-        updateBuffer((s) => insertText(s, "\n"));
+        const now = Date.now();
+        if (pendingExit && now - lastCtrlDAt.current < 2000) {
+          exit();
+          return;
+        }
+        lastCtrlDAt.current = now;
+        setPendingExit(true);
+        setStatusMessage("press ctrl+d again to exit");
         return;
       }
-      submitCurrentBuffer();
-      return;
-    }
 
-    if (key.delete) {
-      updateBuffer((s) => deleteForward(s));
-      return;
-    }
+      if (key.ctrl && (input === "c" || input === "C")) {
+        if (busy) {
+          onInterrupt();
+          setStatusMessage("Interrupting…");
+        } else if (!isEmpty(buffer)) {
+          setBuffer(EMPTY_BUFFER);
+        } else {
+          setStatusMessage("press ctrl+d to exit");
+        }
+        return;
+      }
 
-    if (key.backspace) {
-      updateBuffer((s) => backspace(s));
-      return;
-    }
+      if (pendingExit && (!key.ctrl || (input !== "d" && input !== "D"))) {
+        setPendingExit(false);
+      }
 
-    if ((key.ctrl || key.meta) && key.leftArrow) {
-      updateBuffer((s) => moveWordLeft(s));
-      return;
-    }
+      if (historyCursor !== -1 && !key.upArrow && !key.downArrow) {
+        exitHistoryBrowsing();
+      }
 
-    if ((key.ctrl || key.meta) && key.rightArrow) {
-      updateBuffer((s) => moveWordRight(s));
-      return;
-    }
+      if (showSkillsDropdown) {
+        if (skills.length === 0) {
+          setShowSkillsDropdown(false);
+        } else {
+          if (key.upArrow) {
+            setSkillsDropdownIndex((idx) => (idx - 1 + skills.length) % skills.length);
+            return;
+          }
+          if (key.downArrow) {
+            setSkillsDropdownIndex((idx) => (idx + 1) % skills.length);
+            return;
+          }
+          if ((input === " " && !key.ctrl && !key.meta) || (key.return && !key.shift && !key.meta)) {
+            const skill = skills[skillsDropdownIndex];
+            if (skill) {
+              toggleSelectedSkill(skill);
+            }
+            return;
+          }
+          if (key.tab) {
+            setShowSkillsDropdown(false);
+            return;
+          }
+        }
+      }
 
-    if (key.leftArrow) {
-      updateBuffer((s) => moveLeft(s));
-      return;
-    }
+      if (key.ctrl && (input === "v" || input === "V")) {
+        setStatusMessage("Reading clipboard...");
+        readClipboardImageAsync()
+          .then((image) => {
+            if (image) {
+              setImageUrls((prev) => [...prev, image.dataUrl]);
+              setStatusMessage("Attached image from clipboard");
+            } else {
+              setStatusMessage("No image found in clipboard");
+            }
+          })
+          .catch(() => {
+            setStatusMessage("Failed to read clipboard");
+          });
+        return;
+      }
 
-    if (key.rightArrow) {
-      updateBuffer((s) => moveRight(s));
-      return;
-    }
+      if (isClearImageAttachmentsShortcut(input, key)) {
+        if (imageUrls.length > 0) {
+          setImageUrls([]);
+          setStatusMessage("Cleared attached images");
+        } else {
+          setStatusMessage("No attached images to clear");
+        }
+        return;
+      }
 
-    if (key.home) {
-      updateBuffer((s) => moveLineStart(s));
-      return;
-    }
+      const noModifier = !key.shift && !key.ctrl && !key.meta;
+      const isPlainReturn = key.return && !key.shift && !key.meta;
 
-    if (key.end) {
-      updateBuffer((s) => moveLineEnd(s));
-      return;
-    }
+      if (showMenu) {
+        if (key.upArrow) {
+          setMenuIndex((idx) => (idx - 1 + slashMenu.length) % slashMenu.length);
+          return;
+        }
+        if (key.downArrow) {
+          setMenuIndex((idx) => (idx + 1) % slashMenu.length);
+          return;
+        }
+        if (key.tab || (key.return && !key.shift && !key.meta)) {
+          const selected = slashMenu[menuIndex];
+          if (selected) {
+            handleSlashSelection(selected);
+            return;
+          }
+        }
+      }
 
-    if (key.upArrow) {
-      if (noModifier && (historyCursor !== -1 || buffer.cursor === 0) && promptHistory.length > 0) {
+      if (busy && isPlainReturn) {
+        setStatusMessage("wait for the current response or press esc to interrupt");
+        return;
+      }
+
+      if (key.return) {
+        const isShiftEnter = key.shift || key.meta;
+        if (isShiftEnter) {
+          updateBuffer((s) => insertText(s, "\n"));
+          return;
+        }
+        submitCurrentBuffer();
+        return;
+      }
+
+      if (key.delete) {
+        updateBuffer((s) => deleteForward(s));
+        return;
+      }
+
+      if (key.backspace) {
+        updateBuffer((s) => backspace(s));
+        return;
+      }
+
+      if ((key.ctrl || key.meta) && key.leftArrow) {
+        updateBuffer((s) => moveWordLeft(s));
+        return;
+      }
+
+      if ((key.ctrl || key.meta) && key.rightArrow) {
+        updateBuffer((s) => moveWordRight(s));
+        return;
+      }
+
+      if (key.leftArrow) {
+        updateBuffer((s) => moveLeft(s));
+        return;
+      }
+
+      if (key.rightArrow) {
+        updateBuffer((s) => moveRight(s));
+        return;
+      }
+
+      if (key.home) {
+        updateBuffer((s) => moveLineStart(s));
+        return;
+      }
+
+      if (key.end) {
+        updateBuffer((s) => moveLineEnd(s));
+        return;
+      }
+
+      if (key.upArrow) {
+        if (noModifier && (historyCursor !== -1 || buffer.cursor === 0) && promptHistory.length > 0) {
+          navigateHistory(-1);
+          return;
+        }
+        updateBuffer((s) => moveUp(s));
+        return;
+      }
+
+      if (key.downArrow) {
+        if (noModifier && (historyCursor !== -1 || buffer.cursor === buffer.text.length)) {
+          navigateHistory(1);
+          return;
+        }
+        updateBuffer((s) => moveDown(s));
+        return;
+      }
+
+      if (key.ctrl && (input === "p" || input === "P")) {
         navigateHistory(-1);
         return;
       }
-      updateBuffer((s) => moveUp(s));
-      return;
-    }
-
-    if (key.downArrow) {
-      if (noModifier && (historyCursor !== -1 || buffer.cursor === buffer.text.length)) {
+      if (key.ctrl && (input === "n" || input === "N")) {
         navigateHistory(1);
         return;
       }
-      updateBuffer((s) => moveDown(s));
-      return;
-    }
+      if (key.ctrl && (input === "a" || input === "A")) {
+        updateBuffer((s) => moveLineStart(s));
+        return;
+      }
+      if (key.ctrl && (input === "e" || input === "E")) {
+        updateBuffer((s) => moveLineEnd(s));
+        return;
+      }
+      if (key.ctrl && (input === "b" || input === "B")) {
+        updateBuffer((s) => moveLeft(s));
+        return;
+      }
+      if (key.ctrl && (input === "f" || input === "F")) {
+        updateBuffer((s) => moveRight(s));
+        return;
+      }
+      if (key.meta && (input === "b" || input === "B")) {
+        updateBuffer((s) => moveWordLeft(s));
+        return;
+      }
+      if (key.meta && (input === "f" || input === "F")) {
+        updateBuffer((s) => moveWordRight(s));
+        return;
+      }
+      if (key.ctrl && (input === "k" || input === "K")) {
+        updateBuffer((s) => killLine(s));
+        return;
+      }
+      if (key.ctrl && (input === "u" || input === "U")) {
+        updateBuffer(() => EMPTY_BUFFER);
+        return;
+      }
+      if (key.ctrl && (input === "w" || input === "W")) {
+        updateBuffer((s) => deleteWordBefore(s));
+        return;
+      }
+      if (key.ctrl && (input === "j" || input === "J")) {
+        updateBuffer((s) => insertText(s, "\n"));
+        return;
+      }
 
-    if (key.ctrl && (input === "p" || input === "P")) {
-      navigateHistory(-1);
-      return;
-    }
-    if (key.ctrl && (input === "n" || input === "N")) {
-      navigateHistory(1);
-      return;
-    }
-    if (key.ctrl && (input === "a" || input === "A")) {
-      updateBuffer((s) => moveLineStart(s));
-      return;
-    }
-    if (key.ctrl && (input === "e" || input === "E")) {
-      updateBuffer((s) => moveLineEnd(s));
-      return;
-    }
-    if (key.ctrl && (input === "b" || input === "B")) {
-      updateBuffer((s) => moveLeft(s));
-      return;
-    }
-    if (key.ctrl && (input === "f" || input === "F")) {
-      updateBuffer((s) => moveRight(s));
-      return;
-    }
-    if (key.meta && (input === "b" || input === "B")) {
-      updateBuffer((s) => moveWordLeft(s));
-      return;
-    }
-    if (key.meta && (input === "f" || input === "F")) {
-      updateBuffer((s) => moveWordRight(s));
-      return;
-    }
-    if (key.ctrl && (input === "k" || input === "K")) {
-      updateBuffer((s) => killLine(s));
-      return;
-    }
-    if (key.ctrl && (input === "u" || input === "U")) {
-      updateBuffer(() => EMPTY_BUFFER);
-      return;
-    }
-    if (key.ctrl && (input === "w" || input === "W")) {
-      updateBuffer((s) => deleteWordBefore(s));
-      return;
-    }
-    if (key.ctrl && (input === "j" || input === "J")) {
-      updateBuffer((s) => insertText(s, "\n"));
-      return;
-    }
+      if (input.startsWith("\u001B")) {
+        // Unhandled escape sequence (e.g. function keys); ignore to avoid inserting garbage.
+        return;
+      }
 
-    if (input.startsWith("\u001B")) {
-      // Unhandled escape sequence (e.g. function keys); ignore to avoid inserting garbage.
-      return;
-    }
-
-    if (input && !key.ctrl && !key.meta) {
-      const sanitized = input.replace(/\r/g, "");
-      updateBuffer((s) => insertText(s, sanitized));
-    }
-  }, { isActive: !disabled });
+      if (input && !key.ctrl && !key.meta) {
+        const sanitized = input.replace(/\r/g, "");
+        updateBuffer((s) => insertText(s, sanitized));
+      }
+    },
+    { isActive: !disabled }
+  );
 
   function exitHistoryBrowsing(): void {
     setHistoryCursor(-1);
@@ -520,7 +524,7 @@ export const PromptInput = React.memo(function PromptInput({
     onSubmit({
       text: buffer.text,
       imageUrls,
-      selectedSkills
+      selectedSkills,
     });
     setBuffer(EMPTY_BUFFER);
     setImageUrls([]);
@@ -541,10 +545,7 @@ export const PromptInput = React.memo(function PromptInput({
     setBuffer((state) => removeCurrentSlashToken(state));
   }
 
-  const visibleSkillStart = Math.min(
-    Math.max(0, skillsDropdownIndex - 7),
-    Math.max(0, skills.length - 8)
-  );
+  const visibleSkillStart = Math.min(Math.max(0, skillsDropdownIndex - 7), Math.max(0, skills.length - 8));
   const visibleSkills = skills.slice(visibleSkillStart, visibleSkillStart + 8);
 
   return (
@@ -557,23 +558,29 @@ export const PromptInput = React.memo(function PromptInput({
       ) : null}
       {selectedSkills.length > 0 ? (
         <Box>
-          <Text color="magenta" wrap="truncate-end">{formatSelectedSkillsStatus(selectedSkills)}</Text>
+          <Text color="magenta" wrap="truncate-end">
+            {formatSelectedSkillsStatus(selectedSkills)}
+          </Text>
           <Text dimColor> (use /skills to edit)</Text>
         </Box>
       ) : null}
       {/* Input */}
-      <Box borderStyle="single"
-           borderTop={true}
-           borderBottom={true}
-           borderLeft={false}
-           borderRight={false}
-           borderDimColor>
+      <Box
+        borderStyle="single"
+        borderTop={true}
+        borderBottom={true}
+        borderLeft={false}
+        borderRight={false}
+        borderDimColor
+      >
         <PromptPrefixLine busy={busy} />
         <Text>{renderBufferWithCursor(buffer, !disabled && hasTerminalFocus, placeholder)}</Text>
       </Box>
       {showSkillsDropdown ? (
         <Box flexDirection="column" marginBottom={1}>
-          <Text color="magenta" bold>Select Skills</Text>
+          <Text color="magenta" bold>
+            Select Skills
+          </Text>
           {skills.length === 0 ? (
             <Text dimColor>No skills found</Text>
           ) : (
@@ -584,9 +591,8 @@ export const PromptInput = React.memo(function PromptInput({
               return (
                 <Text key={skill.path || skill.name} color={active ? "cyanBright" : undefined} wrap="truncate-end">
                   {active ? "› " : "  "}
-                  {selected ? "●" : "○"}{" "}
-                  <Text bold>{skill.name}</Text>
-                  {skill.isLoaded ? <Text color="green">  ✓</Text> : null}
+                  {selected ? "●" : "○"} <Text bold>{skill.name}</Text>
+                  {skill.isLoaded ? <Text color="green"> ✓</Text> : null}
                   <Text dimColor>{`  ${skill.path}`}</Text>
                 </Text>
               );
@@ -600,9 +606,11 @@ export const PromptInput = React.memo(function PromptInput({
         </Box>
       ) : null}
       <SlashCommandMenu width={screenWidth} items={slashMenu} activeIndex={menuIndex} />
-      {!showMenu && <Box>
-        <Text dimColor>{footerText}</Text>
-      </Box>}
+      {!showMenu && (
+        <Box>
+          <Text dimColor>{footerText}</Text>
+        </Box>
+      )}
     </Box>
   );
 });
@@ -636,9 +644,7 @@ export function addUniqueSkill(skills: SkillInfo[], skill: SkillInfo): SkillInfo
 }
 
 export function toggleSkillSelection(skills: SkillInfo[], skill: SkillInfo): SkillInfo[] {
-  return isSkillSelected(skills, skill)
-    ? skills.filter((item) => item.name !== skill.name)
-    : [...skills, skill];
+  return isSkillSelected(skills, skill) ? skills.filter((item) => item.name !== skill.name) : [...skills, skill];
 }
 
 export function removeCurrentSlashToken(state: PromptBufferState): PromptBufferState {

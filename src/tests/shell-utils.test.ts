@@ -5,7 +5,7 @@ import {
   getShellKind,
   posixPathToWindowsPath,
   rewriteWindowsNullRedirect,
-  windowsPathToPosixPath
+  windowsPathToPosixPath,
 } from "../tools/shell-utils";
 import { isAbsoluteFilePath, normalizeFilePath } from "../tools/state";
 
@@ -31,7 +31,10 @@ test("Windows nul redirects are rewritten for POSIX bash", () => {
 test("Shell kind detection supports Windows bash.exe paths", () => {
   assert.equal(getShellKind("C:\\Program Files\\Git\\bin\\bash.exe"), "bash");
   assert.equal(getShellKind("/bin/zsh"), "zsh");
-  assert.equal(buildDisableExtglobCommand("C:\\Program Files\\Git\\bin\\bash.exe"), "shopt -u extglob 2>/dev/null || true");
+  assert.equal(
+    buildDisableExtglobCommand("C:\\Program Files\\Git\\bin\\bash.exe"),
+    "shopt -u extglob 2>/dev/null || true"
+  );
   assert.equal(buildDisableExtglobCommand("/bin/zsh"), "setopt NO_EXTENDED_GLOB 2>/dev/null || true");
 });
 
@@ -40,10 +43,7 @@ test("File tool path normalization converts Git Bash drive paths on Windows", ()
     normalizeFilePath("/d/IdeaProjects/guesswho-api/API_DOCUMENTATION.md", "win32"),
     "D:\\IdeaProjects\\guesswho-api\\API_DOCUMENTATION.md"
   );
-  assert.equal(
-    normalizeFilePath("/cygdrive/c/Users/foo/file.txt", "win32"),
-    "C:\\Users\\foo\\file.txt"
-  );
+  assert.equal(normalizeFilePath("/cygdrive/c/Users/foo/file.txt", "win32"), "C:\\Users\\foo\\file.txt");
   assert.equal(normalizeFilePath("/dev/null", "win32"), "\\dev\\null");
 });
 

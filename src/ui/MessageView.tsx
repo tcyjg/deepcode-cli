@@ -1,5 +1,5 @@
 import React from "react";
-import {Box, Newline, Text} from "ink";
+import { Box, Text } from "ink";
 import { renderMarkdown } from "./markdown";
 import type { SessionMessage } from "../session";
 
@@ -16,9 +16,11 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
   if (message.role === "user") {
     const text = message.content || "(no content)";
     return (
-      <Box  marginLeft={1} marginBottom={1} flexDirection="column" marginY={0}>
+      <Box marginLeft={1} marginBottom={1} flexDirection="column" marginY={0}>
         <Box flexGrow={1} gap={1}>
-          <Box><Text color="#229ac3">{`>`}</Text></Box>
+          <Box>
+            <Text color="#229ac3">{`>`}</Text>
+          </Box>
           <Box flexGrow={1}>
             <Text color="#229ac3">{text}</Text>
             {Array.isArray(message.contentParams) && message.contentParams.length > 0 ? (
@@ -46,16 +48,16 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
       return (
         <Box marginLeft={1} flexDirection="column" marginY={0}>
           <StatusLine bulletColor="gray" name="Thinking" params={summary} />
-          <Box flexDirection="column">
-            {content ? <Text dimColor>{renderMarkdown(content)}</Text> : null}
-          </Box>
+          <Box flexDirection="column">{content ? <Text dimColor>{renderMarkdown(content)}</Text> : null}</Box>
         </Box>
       );
     }
 
     return (
       <Box marginLeft={1} marginBottom={1} flexGrow={1} gap={1} marginY={0}>
-        <Box><Text color="#229ac3">✦</Text></Box>
+        <Box>
+          <Text color="#229ac3">✦</Text>
+        </Box>
         <Box flexDirection="column" flexGrow={1}>
           {content ? <Text>{renderMarkdown(content)}</Text> : null}
         </Box>
@@ -89,7 +91,9 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
     if (message.meta?.isSummary) {
       return (
         <Box marginY={0} marginLeft={1} marginBottom={1}>
-          <Text dimColor italic>(conversation summary inserted)</Text>
+          <Text dimColor italic>
+            (conversation summary inserted)
+          </Text>
         </Box>
       );
     }
@@ -102,7 +106,7 @@ export function MessageView({ message, collapsed }: Props): React.ReactElement |
 function StatusLine({
   bulletColor,
   name,
-  params
+  params,
 }: {
   bulletColor: "gray" | "green" | "red";
   name: string;
@@ -111,10 +115,14 @@ function StatusLine({
   return (
     <Text wrap="truncate-end">
       {[
-        <Text key="bullet" color={bulletColor}>✧</Text>,
+        <Text key="bullet" color={bulletColor}>
+          ✧
+        </Text>,
         " ",
-        <Text key="name" bold>{name}</Text>,
-        params ? <Text key="params" color="white">{`  ${params}`}</Text> : null
+        <Text key="name" bold>
+          {name}
+        </Text>,
+        params ? <Text key="params" color="white">{`  ${params}`}</Text> : null,
       ]}
     </Text>
   );
@@ -145,15 +153,16 @@ function buildToolSummary(message: SessionMessage): ToolSummary {
       ? (message.meta.function as { name: string }).name
       : null;
   const name = payload.name || metaFunctionName || "tool";
-  const params = name === "AskUserQuestion"
-    ? extractAskUserQuestionParams(message) || getMetaParams(message)
-    : getMetaParams(message);
+  const params =
+    name === "AskUserQuestion"
+      ? extractAskUserQuestionParams(message) || getMetaParams(message)
+      : getMetaParams(message);
 
   return {
     name,
     params,
     ok: payload.ok !== false,
-    metadata: payload.metadata
+    metadata: payload.metadata,
   };
 }
 
@@ -213,9 +222,11 @@ function extractQuestionsFromValue(value: unknown): string {
     .join(" / ");
 }
 
-function parseToolPayload(
-  content: string | null
-): { name: string | null; ok: boolean; metadata: Record<string, unknown> | null } {
+function parseToolPayload(content: string | null): {
+  name: string | null;
+  ok: boolean;
+  metadata: Record<string, unknown> | null;
+} {
   if (!content) {
     return { name: null, ok: true, metadata: null };
   }
@@ -225,7 +236,7 @@ function parseToolPayload(
     return {
       name: typeof parsed.name === "string" && parsed.name.trim() ? parsed.name.trim() : null,
       ok: parsed.ok !== false,
-      metadata: isPlainRecord(parsed.metadata) ? parsed.metadata : null
+      metadata: isPlainRecord(parsed.metadata) ? parsed.metadata : null,
     };
   } catch {
     return { name: null, ok: true, metadata: null };
@@ -257,7 +268,7 @@ export function parseDiffPreview(diffPreview: string): DiffPreviewLine[] {
       return {
         marker: " ",
         content: line.startsWith(" ") ? line.slice(1) : line,
-        kind: "context"
+        kind: "context",
       };
     });
 }

@@ -1,10 +1,9 @@
-import type React from 'react';
-import { Text, type TextProps } from 'ink';
-import Gradient from 'ink-gradient';
-
+import type React from "react";
+import { Text, type TextProps } from "ink";
+import Gradient from "ink-gradient";
 
 export const ThemedGradient: React.FC<TextProps> = ({ children, ...props }) => {
-  const gradient = ['#229ac3e6', '#229ac3e6']; // Use solid color for now
+  const gradient = ["#229ac3e6", "#229ac3e6"]; // Use solid color for now
 
   if (gradient && gradient.length >= 2) {
     return (
@@ -24,7 +23,7 @@ export const ThemedGradient: React.FC<TextProps> = ({ children, ...props }) => {
 
   // Fallback to accent color if no gradient
   return (
-    <Text color='yellow' {...props}>
+    <Text color="yellow" {...props}>
       {children}
     </Text>
   );

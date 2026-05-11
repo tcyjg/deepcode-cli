@@ -15,7 +15,7 @@ import {
   moveRight,
   moveWordLeft,
   moveWordRight,
-  moveUp
+  moveUp,
 } from "../ui";
 
 test("insertText appends text and advances the cursor", () => {

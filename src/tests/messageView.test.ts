@@ -4,19 +4,14 @@ import { MessageView, parseDiffPreview } from "../ui";
 import type { SessionMessage } from "../session";
 
 test("parseDiffPreview removes headers and classifies lines", () => {
-  const lines = parseDiffPreview([
-    "--- a/file.txt",
-    "+++ b/file.txt",
-    "@@ -1,1 +1,1 @@",
-    " context",
-    "-old",
-    "+new"
-  ].join("\n"));
+  const lines = parseDiffPreview(
+    ["--- a/file.txt", "+++ b/file.txt", "@@ -1,1 +1,1 @@", " context", "-old", "+new"].join("\n")
+  );
 
   assert.deepEqual(lines, [
     { marker: " ", content: "context", kind: "context" },
     { marker: "-", content: "old", kind: "removed" },
-    { marker: "+", content: "new", kind: "added" }
+    { marker: "+", content: "new", kind: "added" },
   ]);
 });
 
@@ -24,14 +19,14 @@ test("parseDiffPreview keeps nonstandard context lines", () => {
   const lines = parseDiffPreview("...\n+added");
   assert.deepEqual(lines, [
     { marker: " ", content: "...", kind: "context" },
-    { marker: "+", content: "added", kind: "added" }
+    { marker: "+", content: "added", kind: "added" },
   ]);
 });
 
 test("MessageView summarizes thinking content across lines", () => {
   assert.equal(
     getThinkingParams({
-      content: "Plan:\n\nInspect the code   and update tests"
+      content: "Plan:\n\nInspect the code   and update tests",
     }),
     "Plan: Inspect the code and update tests"
   );
@@ -45,7 +40,7 @@ test("MessageView falls back to a reasoning placeholder for hidden reasoning con
   assert.equal(
     getThinkingParams({
       content: "",
-      messageParams: { reasoning_content: "hidden chain of thought" }
+      messageParams: { reasoning_content: "hidden chain of thought" },
     }),
     "(reasoning...)"
   );
@@ -69,6 +64,6 @@ function buildAssistantMessage(overrides: Partial<SessionMessage>): SessionMessa
     createTime: "2026-01-01T00:00:00.000Z",
     updateTime: "2026-01-01T00:00:00.000Z",
     meta: { asThinking: true },
-    ...overrides
+    ...overrides,
   };
 }

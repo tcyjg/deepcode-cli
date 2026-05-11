@@ -4,10 +4,7 @@ import * as os from "os";
 import * as path from "path";
 import * as pathWin32 from "path/win32";
 
-const WINDOWS_GIT_LOCATIONS = [
-  "C:\\Program Files\\Git\\cmd\\git.exe",
-  "C:\\Program Files (x86)\\Git\\cmd\\git.exe"
-];
+const WINDOWS_GIT_LOCATIONS = ["C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files (x86)\\Git\\cmd\\git.exe"];
 
 const NUL_REDIRECT_REGEX = /(\d?&?>+\s*)[Nn][Uu][Ll](?=\s|$|[|&;)\n])/g;
 let cachedGitBashPath: string | null = null;
@@ -65,15 +62,9 @@ export function getShellKind(shellPath: string): ShellKind {
 export function buildShellInitCommand(shellPath: string): string | null {
   switch (getShellKind(shellPath)) {
     case "zsh":
-      return [
-        'ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"',
-        'if [ -f "$ZSHRC" ]; then . "$ZSHRC"; fi'
-      ].join("; ");
+      return ['ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"', 'if [ -f "$ZSHRC" ]; then . "$ZSHRC"; fi'].join("; ");
     case "bash":
-      return [
-        'BASHRC="${BASH_ENV:-$HOME/.bashrc}"',
-        'if [ -f "$BASHRC" ]; then . "$BASHRC"; fi'
-      ].join("; ");
+      return ['BASHRC="${BASH_ENV:-$HOME/.bashrc}"', 'if [ -f "$BASHRC" ]; then . "$BASHRC"; fi'].join("; ");
     default:
       return null;
   }
@@ -141,7 +132,7 @@ export function buildShellEnv(shellPath: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     SHELL: shellPath,
-    GIT_EDITOR: "true"
+    GIT_EDITOR: "true",
   };
 
   if (process.platform === "win32") {
@@ -160,11 +151,14 @@ function findAllWindowsExecutableCandidates(executable: string): string[] {
     const output = execFileSync("where.exe", [executable], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-      windowsHide: true
+      windowsHide: true,
     });
     return filterWindowsExecutableCandidates([
-      ...output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
-      ...extraCandidates
+      ...output
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+      ...extraCandidates,
     ]);
   } catch {
     return filterWindowsExecutableCandidates(extraCandidates);

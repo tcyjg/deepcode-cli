@@ -1,11 +1,12 @@
-import React, {useMemo, useState} from "react";
-import {Box, Text} from "ink";
+import React, { useMemo, useState } from "react";
+import { Box, Text } from "ink";
 import * as os from "node:os";
-import path from 'node:path';
-import type {SkillInfo} from "../session";
-import type {ResolvedDeepcodingSettings} from "../settings";
-import {buildSlashCommands, BUILTIN_SLASH_COMMANDS, formatSlashCommandDescription} from "./slashCommands";
-import {ThemedGradient} from "./ThemedGradient";
+import path from "node:path";
+import type { SkillInfo } from "../session";
+import type { ResolvedDeepcodingSettings } from "../settings";
+import { buildSlashCommands, BUILTIN_SLASH_COMMANDS, formatSlashCommandDescription } from "./slashCommands";
+import { ThemedGradient } from "./ThemedGradient";
+import { AsciiLogo } from "../AsciiArt";
 
 type WelcomeScreenProps = {
   projectRoot: string;
@@ -24,7 +25,7 @@ const SHORTCUT_TIPS = [
   { label: "Ctrl+V", description: "Paste an image from the clipboard" },
   { label: "Esc", description: "Interrupt the current model turn" },
   { label: "/", description: "Open the skills and commands menu" },
-  { label: "Ctrl+D twice", description: "Quit Deep Code CLI" }
+  { label: "Ctrl+D twice", description: "Quit Deep Code CLI" },
 ];
 
 export function WelcomeScreen({
@@ -44,21 +45,10 @@ export function WelcomeScreen({
   return (
     <Box flexDirection="column" marginY={1}>
       <Box flexDirection="column" width={panelWidth}>
-        <Box flexDirection='column' paddingX={1}>
-          <Box
-            flexDirection="column"
-            justifyContent="center"
-            paddingX={1}
-          >
+        <Box flexDirection="column" paddingX={1}>
+          <Box flexDirection="column" justifyContent="center" paddingX={1}>
             <Box justifyContent="center" width={compact ? undefined : TITLE_PANEL_WIDTH}>
-              <ThemedGradient>
-                ██████╗ ███████╗███████╗██████╗      ██████╗ ██████╗ ██████╗ ███████╗
-                ██╔══██╗██╔════╝██╔════╝██╔══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝
-                ██║  ██║█████╗  █████╗  ██████╔╝    ██║     ██║   ██║██║  ██║█████╗
-                ██║  ██║██╔══╝  ██╔══╝  ██╔═══╝     ██║     ██║   ██║██║  ██║██╔══╝
-                ██████╔╝███████╗███████╗██║         ╚██████╗╚██████╔╝██████╔╝███████╗
-                ╚═════╝ ╚══════╝╚══════╝╚═╝          ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
-              </ThemedGradient>
+              <ThemedGradient>{AsciiLogo}</ThemedGradient>
             </Box>
           </Box>
 
@@ -73,7 +63,7 @@ export function WelcomeScreen({
           >
             <Box flexGrow={1} marginBottom={compact ? 1 : 0}>
               <Text color={"#229ac3e6"}>{">"}_ Deep Code </Text>
-              <Text color='gray'> (v{version || "unknown"})</Text>
+              <Text color="gray"> (v{version || "unknown"})</Text>
             </Box>
             {!compact ? <Text> </Text> : null}
             <SettingRow label="Model" value={settings.model} />
@@ -84,7 +74,7 @@ export function WelcomeScreen({
         </Box>
       </Box>
 
-      <Box flexDirection='column' width={panelWidth} paddingX={1}>
+      <Box flexDirection="column" width={panelWidth} paddingX={1}>
         {tip ? (
           <Box marginTop={1}>
             <Text dimColor>
@@ -129,12 +119,12 @@ export function buildWelcomeTips(skills: SkillInfo[]): Array<{ label: string; de
     .filter((item) => item.kind !== "skill" || item.skill?.isLoaded)
     .map((item) => ({
       label: item.label,
-      description: formatSlashCommandDescription(item.description)
+      description: formatSlashCommandDescription(item.description),
     }));
 
   return [
     ...slashTips,
-    ...SHORTCUT_TIPS.filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label))
+    ...SHORTCUT_TIPS.filter((tip) => !BUILTIN_SLASH_COMMANDS.some((command) => command.label === tip.label)),
   ];
 }
 

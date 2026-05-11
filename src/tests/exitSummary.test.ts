@@ -6,20 +6,19 @@ import type { SessionEntry, SessionMessage } from "../session";
 const stripAnsi = (text: string): string => text.replace(/\u001b\[[0-9;]*m/g, "");
 
 test("buildExitSummaryText only shows Goodbye and model usage with cached tokens", () => {
-  const summary = stripAnsi(buildExitSummaryText({
-    session: buildSession({
-      prompt_tokens: 11_966,
-      completion_tokens: 236,
-      total_tokens: 12_202,
-      prompt_tokens_details: { cached_tokens: 11_776 },
-      completion_tokens_details: { reasoning_tokens: 144 },
-    }),
-    messages: [
-      buildAssistantMessage("assistant-1"),
-      buildAssistantMessage("assistant-2"),
-    ],
-    model: "mimo-v2.5-pro",
-  }));
+  const summary = stripAnsi(
+    buildExitSummaryText({
+      session: buildSession({
+        prompt_tokens: 11_966,
+        completion_tokens: 236,
+        total_tokens: 12_202,
+        prompt_tokens_details: { cached_tokens: 11_776 },
+        completion_tokens_details: { reasoning_tokens: 144 },
+      }),
+      messages: [buildAssistantMessage("assistant-1"), buildAssistantMessage("assistant-2")],
+      model: "mimo-v2.5-pro",
+    })
+  );
 
   assert.match(summary, /Goodbye!/);
   assert.match(summary, /╭─+╮/);

@@ -251,7 +251,7 @@ type PromptToolOptions = {
   webSearchEnabled?: boolean;
 };
 
-function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): string {
+function readToolDocs(extensionRoot: string, _options: PromptToolOptions = {}): string {
   const toolsDir = path.join(extensionRoot, "docs", "tools");
   if (!fs.existsSync(toolsDir)) {
     return "";
@@ -276,9 +276,7 @@ function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): s
 
 export function getSystemPrompt(projectRoot: string, options: PromptToolOptions = {}): string {
   const toolDocs = readToolDocs(getExtensionRoot(), options);
-  const basePrompt = toolDocs
-    ? `${SYSTEM_PROMPT_BASE}\n\n# Available Tools\n\n${toolDocs}`
-    : SYSTEM_PROMPT_BASE;
+  const basePrompt = toolDocs ? `${SYSTEM_PROMPT_BASE}\n\n# Available Tools\n\n${toolDocs}` : SYSTEM_PROMPT_BASE;
   return `${basePrompt}\n\n${getRuntimeContext(projectRoot)}`;
 }
 
@@ -291,7 +289,7 @@ export function getCompactPrompt(sessionMessages: SessionMessage[]): string {
         content: message.content,
         contentParams: message.contentParams,
         messageParams: message.messageParams,
-        createTime: message.createTime
+        createTime: message.createTime,
       })
     )
     .join("\n");
@@ -313,9 +311,9 @@ function getRuntimeContext(projectRoot: string): string {
     ...runtimeVersions,
     "command installed": {
       "ast-grep": checkToolInstalled("ast-grep"),
-      "ripgrep": checkToolInstalled("rg"),
-      "jq": checkToolInstalled("jq")
-    }
+      ripgrep: checkToolInstalled("rg"),
+      jq: checkToolInstalled("jq"),
+    },
   };
   return `# Local Workspace Environment\n\n\`\`\`json
 ${JSON.stringify(env, null, 2)}
@@ -329,7 +327,7 @@ function checkToolInstalled(tool: string): boolean {
       execFileSync(bashPath, ["-lc", `command -v ${shellSingleQuote(tool)}`], {
         encoding: "utf8",
         stdio: "ignore",
-        windowsHide: true
+        windowsHide: true,
       });
       return true;
     }
@@ -373,7 +371,7 @@ function getCommandVersion(command: string, args: string[]): string | null {
     if (process.platform === "win32") {
       return execFileSync(findGitBashPath(), ["-lc", `${commandText} 2>&1`], {
         encoding: "utf8",
-        windowsHide: true
+        windowsHide: true,
       }).trim();
     }
     return execSync(`${commandText} 2>&1`, { encoding: "utf8" }).trim();
@@ -387,7 +385,7 @@ function getUnameInfo(): string {
     if (process.platform === "win32") {
       return execFileSync(findGitBashPath(), ["-lc", "uname -a"], {
         encoding: "utf8",
-        windowsHide: true
+        windowsHide: true,
       }).trim();
     }
     return execSync("uname -a", { encoding: "utf8" }).trim();
@@ -421,7 +419,7 @@ export type ToolDefinition = {
   };
 };
 
-export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
+export function getTools(_options: PromptToolOptions = {}): ToolDefinition[] {
   const tools: ToolDefinition[] = [
     {
       type: "function",
@@ -457,8 +455,7 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
           properties: {
             questions: {
               type: "array",
-              description:
-                "Questions to present to the user. Usually only one question is needed at a time.",
+              description: "Questions to present to the user. Usually only one question is needed at a time.",
               items: {
                 type: "object",
                 properties: {
@@ -468,20 +465,17 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
                   },
                   multiSelect: {
                     type: "boolean",
-                    description:
-                      "Whether the user may choose multiple options.",
+                    description: "Whether the user may choose multiple options.",
                   },
                   options: {
                     type: "array",
-                    description:
-                      "A list of predefined options for the user to choose from.",
+                    description: "A list of predefined options for the user to choose from.",
                     items: {
                       type: "object",
                       properties: {
                         label: {
                           type: "string",
-                          description:
-                            "The display text for the option.",
+                          description: "The display text for the option.",
                         },
                         description: {
                           type: "string",
@@ -506,8 +500,7 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
       type: "function",
       function: {
         name: "read",
-        description:
-          "Read files from the filesystem (text, images, PDFs, notebooks).",
+        description: "Read files from the filesystem (text, images, PDFs, notebooks).",
         parameters: {
           type: "object",
           properties: {
@@ -525,8 +518,7 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
             },
             pages: {
               type: "string",
-              description:
-                'Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files.',
+              description: 'Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files.',
             },
           },
           required: ["file_path"],
@@ -538,8 +530,7 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
       type: "function",
       function: {
         name: "write",
-        description:
-          "Create files or overwrite them with a complete string payload. Prefer edit for existing files.",
+        description: "Create files or overwrite them with a complete string payload. Prefer edit for existing files.",
         parameters: {
           type: "object",
           properties: {
@@ -571,7 +562,8 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
             },
             snippet_id: {
               type: "string",
-              description: "Snippet id returned by the Read or Edit tool to scope the search range after a partial read.",
+              description:
+                "Snippet id returned by the Read or Edit tool to scope the search range after a partial read.",
             },
             old_string: {
               type: "string",
@@ -583,14 +575,12 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
             },
             replace_all: {
               type: "boolean",
-              description:
-                "Replace all occurences of old_string (default false)",
+              description: "Replace all occurences of old_string (default false)",
               default: false,
             },
             expected_occurrences: {
               type: "number",
-              description:
-                "Expected number of matches, especially useful as a safety check with replace_all",
+              description: "Expected number of matches, especially useful as a safety check with replace_all",
             },
           },
           required: ["old_string", "new_string"],
@@ -610,7 +600,8 @@ export function getTools(options: PromptToolOptions = {}): ToolDefinition[] {
         properties: {
           query: {
             type: "string",
-            description: "A search query phrased as a clear, specific natural language question or statement that includes key context.",
+            description:
+              "A search query phrased as a clear, specific natural language question or statement that includes key context.",
           },
         },
         required: ["query"],

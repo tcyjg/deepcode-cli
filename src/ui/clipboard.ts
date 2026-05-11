@@ -14,7 +14,7 @@ const IMAGE_MIME_BY_EXT = new Map([
   [".jpg", "image/jpeg"],
   [".jpeg", "image/jpeg"],
   [".gif", "image/gif"],
-  [".webp", "image/webp"]
+  [".webp", "image/webp"],
 ]);
 
 function bufferToDataUrl(buffer: Buffer, mimeType: string): string {
@@ -83,7 +83,7 @@ function readMacClipboardImage(): ClipboardImage | null {
       "-e",
       "write png_data to fp",
       "-e",
-      "close access fp"
+      "close access fp",
     ]);
 
     if (saved) {

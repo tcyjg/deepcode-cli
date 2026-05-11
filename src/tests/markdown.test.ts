@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { renderMarkdown } from "../ui";
 
 function stripAnsi(text: string): string {
-  // eslint-disable-next-line no-control-regex
   return text.replace(/\[[0-9;]*m/g, "");
 }
 

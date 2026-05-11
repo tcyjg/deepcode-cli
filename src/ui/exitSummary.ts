@@ -45,12 +45,8 @@ function extractUsageFields(usage: unknown | null): UsageFields {
   }
 
   const record = usage as Record<string, unknown>;
-  const promptTokens =
-    typeof record.prompt_tokens === "number" ? record.prompt_tokens : 0;
-  const completionTokens =
-    typeof record.completion_tokens === "number"
-      ? record.completion_tokens
-      : 0;
+  const promptTokens = typeof record.prompt_tokens === "number" ? record.prompt_tokens : 0;
+  const completionTokens = typeof record.completion_tokens === "number" ? record.completion_tokens : 0;
   let cachedTokens = 0;
   const promptDetails = record.prompt_tokens_details;
   if (promptDetails && typeof promptDetails === "object" && !Array.isArray(promptDetails)) {
@@ -79,16 +75,11 @@ export function buildExitSummaryText(input: ExitSummaryInput): string {
 
   const borderColor = chalk.hex("#229ac3e6");
   const titleColor = gradientString("#229ac3e6", "rgb(125 51 247 / 0.7)");
-  const line = (text: string) =>
-    `${borderColor("│")}  ${padRight(text, contentWidth)}  ${borderColor("│")}`;
+  const line = (text: string) => `${borderColor("│")}  ${padRight(text, contentWidth)}  ${borderColor("│")}`;
 
   const header = chalk.bold(titleColor("Goodbye!"));
 
-  const rows: string[] = [
-    "",
-    `${header}`,
-    "",
-  ];
+  const rows: string[] = ["", `${header}`, ""];
 
   const usage = extractUsageFields(session?.usage ?? null);
   const modelName = model ?? "unknown";

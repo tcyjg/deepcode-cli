@@ -9,17 +9,17 @@ test("resolveSettings reads top-level thinkingEnabled, notify, and webSearchTool
       env: {
         MODEL: "deepseek-v3.2",
         BASE_URL: "https://example.com/v1",
-        API_KEY: "sk-test"
+        API_KEY: "sk-test",
       },
       thinkingEnabled: true,
       reasoningEffort: "high",
       debugLogEnabled: true,
       notify: "  /tmp/notify.sh  ",
-      webSearchTool: "  /tmp/web-search.sh  "
+      webSearchTool: "  /tmp/web-search.sh  ",
     },
     {
       model: "default-model",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -37,12 +37,12 @@ test("resolveSettings still accepts legacy env.THINKING and defaults reasoning e
   const resolved = resolveSettings(
     {
       env: {
-        THINKING: "enabled"
-      }
+        THINKING: "enabled",
+      },
     },
     {
       model: "default-model",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -56,12 +56,12 @@ test("resolveSettings defaults DeepSeek v4 models to thinking mode", () => {
   const resolved = resolveSettings(
     {
       env: {
-        MODEL: "deepseek-v4-flash"
-      }
+        MODEL: "deepseek-v4-flash",
+      },
     },
     {
       model: "default-model",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -73,7 +73,7 @@ test("resolveSettings applies thinking defaults to the fallback model", () => {
     {},
     {
       model: "deepseek-v4-pro",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -85,12 +85,12 @@ test("resolveSettings keeps thinking mode off by default for other models", () =
   const resolved = resolveSettings(
     {
       env: {
-        MODEL: "deepseek-v3.2"
-      }
+        MODEL: "deepseek-v3.2",
+      },
     },
     {
       model: "default-model",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -101,13 +101,13 @@ test("resolveSettings allows explicit thinkingEnabled to override model defaults
   const resolved = resolveSettings(
     {
       env: {
-        MODEL: "deepseek-v4-pro"
+        MODEL: "deepseek-v4-pro",
       },
-      thinkingEnabled: false
+      thinkingEnabled: false,
     },
     {
       model: "default-model",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -117,11 +117,11 @@ test("resolveSettings allows explicit thinkingEnabled to override model defaults
 test("resolveSettings defaults invalid reasoning effort to max", () => {
   const resolved = resolveSettings(
     {
-      reasoningEffort: "medium" as never
+      reasoningEffort: "medium" as never,
     },
     {
       model: "default-model",
-      baseURL: "https://default.example.com"
+      baseURL: "https://default.example.com",
     }
   );
 
@@ -159,7 +159,7 @@ test("launchNotifyScript passes DURATION and falls back to /bin/sh for non-execu
       },
       unref() {
         return undefined;
-      }
+      },
     };
   };
 

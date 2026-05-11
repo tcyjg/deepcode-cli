@@ -42,7 +42,7 @@ if (args.includes("--help") || args.includes("-h")) {
       "  /init            Initialize an AGENTS.md file with instructions for LLM",
       "  /resume          Pick a previous conversation to continue",
       "  /exit            Quit",
-      "  ctrl+d twice     Quit"
+      "  ctrl+d twice     Quit",
     ].join("\n") + "\n"
   );
   process.exit(0);
@@ -52,10 +52,7 @@ const projectRoot = process.cwd();
 configureWindowsShell();
 
 if (!process.stdin.isTTY) {
-  process.stderr.write(
-    "deepcode requires an interactive terminal (TTY). " +
-      "Re-run from a real terminal session.\n"
-  );
+  process.stderr.write("deepcode requires an interactive terminal (TTY). " + "Re-run from a real terminal session.\n");
   process.exit(1);
 }
 
@@ -68,11 +65,7 @@ async function main(): Promise<void> {
 
   function startApp(): void {
     const inkInstance = render(
-      <App
-        projectRoot={projectRoot}
-        version={packageInfo.version}
-        onRestart={() => restartRef.current?.()}
-      />,
+      <App projectRoot={projectRoot} version={packageInfo.version} onRestart={() => restartRef.current?.()} />,
       { exitOnCtrlC: false }
     );
 
@@ -109,11 +102,10 @@ function configureWindowsShell(): void {
 
 function readPackageInfo(): PackageInfo {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pkg = require("../package.json") as { name?: unknown; version?: unknown };
     return {
       name: typeof pkg.name === "string" ? pkg.name : "@vegamo/deepcode-cli",
-      version: typeof pkg.version === "string" ? pkg.version : ""
+      version: typeof pkg.version === "string" ? pkg.version : "",
     };
   } catch {
     return { name: "@vegamo/deepcode-cli", version: "" };

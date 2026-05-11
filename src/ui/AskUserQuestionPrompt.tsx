@@ -83,7 +83,7 @@ export function AskUserQuestionPrompt({ questions, onSubmit, onCancel }: Props):
     if (key.backspace && isCurrentOther) {
       setOtherTexts((prev) => ({
         ...prev,
-        [questionIndex]: (prev[questionIndex] ?? "").slice(0, -1)
+        [questionIndex]: (prev[questionIndex] ?? "").slice(0, -1),
       }));
       return;
     }
@@ -98,7 +98,7 @@ export function AskUserQuestionPrompt({ questions, onSubmit, onCancel }: Props):
       if (sanitized) {
         setOtherTexts((prev) => ({
           ...prev,
-          [questionIndex]: `${prev[questionIndex] ?? ""}${sanitized}`
+          [questionIndex]: `${prev[questionIndex] ?? ""}${sanitized}`,
         }));
       }
       return;
@@ -131,9 +131,7 @@ export function AskUserQuestionPrompt({ questions, onSubmit, onCancel }: Props):
   function toggleOption(value: string): void {
     setSelectedValues((prev) => {
       const current = prev[questionIndex] ?? [];
-      const next = current.includes(value)
-        ? current.filter((item) => item !== value)
-        : [...current, value];
+      const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
       return { ...prev, [questionIndex]: next };
     });
   }
@@ -141,15 +139,17 @@ export function AskUserQuestionPrompt({ questions, onSubmit, onCancel }: Props):
   function commitCurrentQuestion(): void {
     const answer = buildAnswerForQuestion(question, options[cursorIndex], selectedForQuestion, otherText);
     if (!answer) {
-      setStatusMessage(question.multiSelect
-        ? "Select at least one option with Space, or type an Other answer."
-        : "Select an option, or type an Other answer.");
+      setStatusMessage(
+        question.multiSelect
+          ? "Select at least one option with Space, or type an Other answer."
+          : "Select an option, or type an Other answer."
+      );
       return;
     }
 
     const nextAnswers = {
       ...answers,
-      [question.question]: answer
+      [question.question]: answer,
     };
     setAnswers(nextAnswers);
 
@@ -165,8 +165,13 @@ export function AskUserQuestionPrompt({ questions, onSubmit, onCancel }: Props):
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1} marginY={1}>
       <Box marginBottom={1}>
-        <Text color="yellow" bold>Answer questions</Text>
-        <Text dimColor>  {questionIndex + 1}/{questions.length}</Text>
+        <Text color="yellow" bold>
+          Answer questions
+        </Text>
+        <Text dimColor>
+          {" "}
+          {questionIndex + 1}/{questions.length}
+        </Text>
       </Box>
       <Text bold>{question.question}</Text>
       <Box flexDirection="column" marginTop={1}>
@@ -175,35 +180,45 @@ export function AskUserQuestionPrompt({ questions, onSubmit, onCancel }: Props):
           const isSelected = option.isOther
             ? selectedForQuestion.includes(OTHER_VALUE) || Boolean(otherText.trim())
             : selectedForQuestion.includes(option.value) || answers[question.question] === option.label;
-          const marker = question.multiSelect ? (isSelected ? "[x]" : "[ ]") : (isSelected ? "●" : "○");
+          const marker = question.multiSelect ? (isSelected ? "[x]" : "[ ]") : isSelected ? "●" : "○";
           return (
             <Box key={option.value} flexDirection="column">
               <Text color={isCursor ? "cyanBright" : undefined}>
-                {isCursor ? "› " : "  "}{marker} <Text bold={isCursor}>{option.label}</Text>
+                {isCursor ? "› " : "  "}
+                {marker} <Text bold={isCursor}>{option.label}</Text>
               </Text>
               {option.isOther ? (
-                <Box marginLeft={4} marginTop={0} borderStyle="single" borderColor={isCursor ? "cyanBright" : "gray"} paddingX={1} width={64}>
+                <Box
+                  marginLeft={4}
+                  marginTop={0}
+                  borderStyle="single"
+                  borderColor={isCursor ? "cyanBright" : "gray"}
+                  paddingX={1}
+                  width={64}
+                >
                   {otherText ? (
-                    <Text color="white">{otherText}{isCursor ? <Text color="cyanBright">▌</Text> : null}</Text>
+                    <Text color="white">
+                      {otherText}
+                      {isCursor ? <Text color="cyanBright">▌</Text> : null}
+                    </Text>
                   ) : (
                     <Text dimColor>{isCursor ? "type your answer here" : "type a custom answer"}</Text>
                   )}
                 </Box>
               ) : null}
-              {option.description ? (
-                <Text dimColor>      {option.description}</Text>
-              ) : null}
+              {option.description ? <Text dimColor> {option.description}</Text> : null}
             </Box>
           );
         })}
       </Box>
       <Box marginTop={1}>
         <Text dimColor>
-          {statusMessage ?? (isCurrentOther
-            ? "Type your answer · Backspace edit · Enter submit/next · ↑ choose presets · Esc type manually"
-            : question.multiSelect
-              ? "↑/↓ move · Space toggle · Enter submit/next · Esc type manually"
-              : "↑/↓ move · Enter select/next · Esc type manually")}
+          {statusMessage ??
+            (isCurrentOther
+              ? "Type your answer · Backspace edit · Enter submit/next · ↑ choose presets · Esc type manually"
+              : question.multiSelect
+                ? "↑/↓ move · Space toggle · Enter submit/next · Esc type manually"
+                : "↑/↓ move · Enter select/next · Esc type manually")}
         </Text>
       </Box>
     </Box>
@@ -218,13 +233,13 @@ function buildOptions(question: AskUserQuestionItem | undefined): OptionEntry[] 
     ...question.options.map((option) => ({
       label: option.label,
       description: option.description,
-      value: option.label
+      value: option.label,
     })),
     {
       label: "Other",
       value: OTHER_VALUE,
-      isOther: true
-    }
+      isOther: true,
+    },
   ];
 }
 

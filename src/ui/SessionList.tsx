@@ -1,6 +1,6 @@
-import React, {useState, useMemo} from "react";
-import {Box, Text, useInput, useWindowSize} from "ink";
-import type {SessionEntry} from "../session";
+import React, { useState, useMemo } from "react";
+import { Box, Text, useInput, useWindowSize } from "ink";
+import type { SessionEntry } from "../session";
 
 type Props = {
   sessions: SessionEntry[];
@@ -8,9 +8,9 @@ type Props = {
   onCancel: () => void;
 };
 
-export function SessionList({sessions, onSelect, onCancel}: Props): React.ReactElement {
+export function SessionList({ sessions, onSelect, onCancel }: Props): React.ReactElement {
   const [index, setIndex] = useState(0);
-  const {columns, rows} = useWindowSize();
+  const { columns, rows } = useWindowSize();
 
   // Dynamically calculate the number of visible sessions based on terminal height
   const maxVisibleSessions = useMemo(() => {
@@ -97,42 +97,60 @@ export function SessionList({sessions, onSelect, onCancel}: Props): React.ReactE
       paddingX={1}
       marginTop={1}
     >
-      <Box flexDirection="column" borderStyle='round' borderDimColor flexGrow={1} overflow="hidden">
+      <Box flexDirection="column" borderStyle="round" borderDimColor flexGrow={1} overflow="hidden">
         {/* Header row */}
         <Box paddingX={1}>
-          <Text bold color="cyanBright">Resume a session</Text>
-          <Text bold color="#229ac3"> ({sessions.length} total)</Text>
+          <Text bold color="cyanBright">
+            Resume a session
+          </Text>
+          <Text bold color="#229ac3">
+            {" "}
+            ({sessions.length} total)
+          </Text>
         </Box>
         {/* Session list */}
-        <Box borderTop={true} borderBottom={true} borderLeft={false} borderRight={false} borderStyle='round'
-             borderDimColor flexDirection='column' flexGrow={1} paddingX={1} overflow="hidden">
+        <Box
+          borderTop={true}
+          borderBottom={true}
+          borderLeft={false}
+          borderRight={false}
+          borderStyle="round"
+          borderDimColor
+          flexDirection="column"
+          flexGrow={1}
+          paddingX={1}
+          overflow="hidden"
+        >
           {visibleSessions.map((session, i) => {
             const actualIndex = scrollOffset + i;
             return (
               <Box key={session.id} height={2} marginBottom={1}>
                 <Box>
-                  <Text color='#229ac3'>
-                    {actualIndex === safeIndex ? "› " : "  "}
-                  </Text>
+                  <Text color="#229ac3">{actualIndex === safeIndex ? "› " : "  "}</Text>
                 </Box>
-                <Box flexDirection='column' flexGrow={1}>
-                  <Box width={'100%'}>
-                    <Text {...(actualIndex === safeIndex ? {bold: true} : {})} color={actualIndex === safeIndex ? "#229ac3" : undefined}>
+                <Box flexDirection="column" flexGrow={1}>
+                  <Box width={"100%"}>
+                    <Text
+                      {...(actualIndex === safeIndex ? { bold: true } : {})}
+                      color={actualIndex === safeIndex ? "#229ac3" : undefined}
+                    >
                       {formatSessionTitle(session.summary || "Untitled")}
                     </Text>
                     <Text dimColor> ({session.status})</Text>
                   </Box>
-                  <Box width='100%'>
+                  <Box width="100%">
                     <Text dimColor>{formatTimestamp(session.updateTime)} </Text>
                   </Box>
                 </Box>
               </Box>
             );
           })}
-          {(scrollOffset > 0 || scrollOffset + maxVisibleSessions < sessions.length) ? (
+          {scrollOffset > 0 || scrollOffset + maxVisibleSessions < sessions.length ? (
             <Box marginTop={1}>
               {scrollOffset > 0 ? <Text dimColor>… {scrollOffset} newer sessions above. </Text> : null}
-              {scrollOffset + maxVisibleSessions < sessions.length ? <Text dimColor>… {sessions.length - scrollOffset - maxVisibleSessions} older sessions below.</Text> : null}
+              {scrollOffset + maxVisibleSessions < sessions.length ? (
+                <Text dimColor>… {sessions.length - scrollOffset - maxVisibleSessions} older sessions below.</Text>
+              ) : null}
             </Box>
           ) : null}
         </Box>

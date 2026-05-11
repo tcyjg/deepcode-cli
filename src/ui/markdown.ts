@@ -17,9 +17,7 @@ export function renderMarkdown(text: string): string {
     .join("");
 }
 
-type FenceSegment =
-  | { kind: "text"; body: string }
-  | { kind: "code"; lang: string; body: string };
+type FenceSegment = { kind: "text"; body: string } | { kind: "code"; lang: string; body: string };
 
 function splitByFences(text: string): FenceSegment[] {
   const segments: FenceSegment[] = [];

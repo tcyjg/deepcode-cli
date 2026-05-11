@@ -1,6 +1,7 @@
-import {formatSlashCommandDescription, formatSlashCommandLabel, SlashCommandItem} from "./slashCommands";
+import { formatSlashCommandDescription, formatSlashCommandLabel } from "./slashCommands";
+import type { SlashCommandItem } from "./slashCommands";
 import React from "react";
-import {Box, Text} from "ink";
+import { Box, Text } from "ink";
 
 type SlashCommandMenuProps = {
   items: SlashCommandItem[];
@@ -10,11 +11,22 @@ type SlashCommandMenuProps = {
 };
 
 const SlashCommandMenu = React.memo(function SlashCommandMenu({
-                                                                items,
-                                                                activeIndex,
-                                                                maxVisible = 6,
-                                                                width
-                                                              }: SlashCommandMenuProps): React.ReactElement | null {
+  items,
+  activeIndex,
+  maxVisible = 6,
+  width,
+}: SlashCommandMenuProps): React.ReactElement | null {
+  // 计算标签列最佳宽度：包含前缀"› "或"  "（2字符），不超过容器一半（扣除gap）
+  const labelColumnWidth = React.useMemo(() => {
+    if (items.length === 0) {
+      return 0;
+    }
+    const longestLabel = Math.max(...items.map((s) => s.label.length));
+    const contentWidth = longestLabel + 2; // +2 for prefix "› " or "  "
+    const maxAllowed = Math.max(10, (width - 2) >> 1); // 容器50%宽度（减去gap），至少保留10列
+    return Math.min(contentWidth, maxAllowed);
+  }, [items, width]);
+
   if (items.length === 0) {
     return null;
   }
@@ -26,18 +38,12 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
   );
   const visibleItems = items.slice(visibleStart, visibleStart + maxVisible);
 
-  // 计算标签列最佳宽度：包含前缀"› "或"  "（2字符），不超过容器一半（扣除gap）
-  const labelColumnWidth = React.useMemo(() => {
-    const longestLabel = Math.max(...items.map((s) => s.label.length));
-    const contentWidth = longestLabel + 2; // +2 for prefix "› " or "  "
-    const maxAllowed = Math.max(10, (width - 2) >> 1); // 容器50%宽度（减去gap），至少保留10列
-    return Math.min(contentWidth, maxAllowed);
-  }, [items, width]);
-
   return (
     <Box flexDirection="column" marginBottom={1} width={width}>
       {visibleStart > 0 ? (
-        <Box marginLeft={2}><Text dimColor>▲</Text></Box>
+        <Box marginLeft={2}>
+          <Text dimColor>▲</Text>
+        </Box>
       ) : null}
       {visibleItems.map((item, idx) => {
         const actualIndex = visibleStart + idx;
@@ -50,16 +56,18 @@ const SlashCommandMenu = React.memo(function SlashCommandMenu({
               </Text>
             </Box>
             <Box flexGrow={1}>
-              <Text color={actualIndex === activeIndex ? "#229ac3" : undefined} wrap="truncate-end" dimColor>{formatSlashCommandDescription(item.description)}</Text>
+              <Text color={actualIndex === activeIndex ? "#229ac3" : undefined} wrap="truncate-end" dimColor>
+                {formatSlashCommandDescription(item.description)}
+              </Text>
             </Box>
           </Box>
         );
       })}
-      <Box marginLeft={2} flexDirection='column'>
-        {visibleStart + visibleItems.length < items.length ? (
-          <Text dimColor>▼</Text>
-        ) : null}
-        <Text dimColor>({activeIndex + 1}/{items.length})  ↑↓ to navigate · Enter to select</Text>
+      <Box marginLeft={2} flexDirection="column">
+        {visibleStart + visibleItems.length < items.length ? <Text dimColor>▼</Text> : null}
+        <Text dimColor>
+          ({activeIndex + 1}/{items.length}) ↑↓ to navigate · Enter to select
+        </Text>
       </Box>
     </Box>
   );

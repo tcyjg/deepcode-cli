@@ -15,27 +15,22 @@ type Props = {
   onSelect: (choice: UpdatePromptChoice) => void;
 };
 
-export function UpdatePrompt({
-  currentVersion,
-  latestVersion,
-  installCommand,
-  onSelect
-}: Props): React.ReactElement {
+export function UpdatePrompt({ currentVersion, latestVersion, installCommand, onSelect }: Props): React.ReactElement {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const options: UpdatePromptOption[] = [
     {
       value: "install",
-      label: `Install the latest version with \`${installCommand}\``
+      label: `Install the latest version with \`${installCommand}\``,
     },
     {
       value: "ignore-once",
-      label: "Ignore once"
+      label: "Ignore once",
     },
     {
       value: "ignore-version",
-      label: `Ignore this version (${latestVersion})`
-    }
+      label: `Ignore this version (${latestVersion})`,
+    },
   ];
 
   useInput((input, key) => {

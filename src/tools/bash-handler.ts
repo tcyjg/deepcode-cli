@@ -6,7 +6,7 @@ import {
   buildShellInitCommand,
   resolveShellPath,
   rewriteWindowsNullRedirect,
-  toNativeCwd
+  toNativeCwd,
 } from "./shell-utils";
 
 const MAX_OUTPUT_CHARS = 30000;
@@ -33,7 +33,7 @@ export async function handleBashTool(
     return {
       ok: false,
       name: "bash",
-      error: "Missing required \"command\" string."
+      error: 'Missing required "command" string.',
     };
   }
 
@@ -54,11 +54,7 @@ export async function handleBashTool(
 
   if (execution.error || result.exitCode !== 0 || result.signal !== null) {
     const errorMessage = buildErrorMessage(result.exitCode, result.signal, execution.error);
-    return formatResult(
-      { ...result, ok: false },
-      "bash",
-      errorMessage
-    );
+    return formatResult({ ...result, ok: false }, "bash", errorMessage);
   }
 
   return formatResult(result, "bash");
@@ -114,7 +110,7 @@ async function executeShellCommand(
       env: buildShellEnv(shellPath),
       detached,
       windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: ["ignore", "pipe", "pipe"],
     });
     const pid = child.pid;
     if (typeof pid === "number") {
@@ -145,7 +141,7 @@ async function executeShellCommand(
         stderr,
         exitCode: typeof code === "number" ? code : null,
         signal: signal ?? null,
-        error
+        error,
       });
     });
   });
@@ -185,7 +181,7 @@ function buildToolCommandResult(
     signal,
     truncated,
     shellPath,
-    startCwd
+    startCwd,
   };
 }
 
@@ -243,18 +239,14 @@ function buildErrorMessage(exitCode: number | null, signal: string | null, error
   return "Command failed.";
 }
 
-function formatResult(
-  result: ToolCommandResult,
-  name: string,
-  errorMessage?: string
-): ToolExecutionResult {
+function formatResult(result: ToolCommandResult, name: string, errorMessage?: string): ToolExecutionResult {
   const metadata: Record<string, unknown> = {
     exitCode: result.exitCode,
     signal: result.signal,
     cwd: result.cwd,
     truncated: result.truncated,
     shellPath: result.shellPath,
-    startCwd: result.startCwd
+    startCwd: result.startCwd,
   };
 
   const outputValue = result.output ? result.output : undefined;
@@ -264,6 +256,6 @@ function formatResult(
     name,
     output: outputValue,
     error: errorMessage,
-    metadata
+    metadata,
   };
 }

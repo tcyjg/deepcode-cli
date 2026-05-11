@@ -10,7 +10,7 @@ test("compareVersions orders semantic versions", () => {
 });
 
 test("parseNpmViewVersion parses npm view JSON and plain output", () => {
-  assert.equal(parseNpmViewVersion("\"0.1.4\"\n"), "0.1.4");
+  assert.equal(parseNpmViewVersion('"0.1.4"\n'), "0.1.4");
   assert.equal(parseNpmViewVersion("0.1.5\n"), "0.1.5");
   assert.equal(parseNpmViewVersion("\n"), null);
 });

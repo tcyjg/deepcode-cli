@@ -1,32 +1,33 @@
 import { z } from "zod";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
 
-export type ValidationResult =
-  | { ok: true; input: Record<string, unknown> }
-  | { ok: false; error: string };
+export type ValidationResult = { ok: true; input: Record<string, unknown> } | { ok: false; error: string };
 
 export function semanticBoolean(defaultValue = false) {
-  return z.preprocess(
-    (value) => {
-      if (value === "true") {
-        return true;
-      }
-      if (value === "false") {
-        return false;
-      }
-      return value;
-    },
-    z.boolean().default(defaultValue)
-  );
+  return z.preprocess((value) => {
+    if (value === "true") {
+      return true;
+    }
+    if (value === "false") {
+      return false;
+    }
+    return value;
+  }, z.boolean().default(defaultValue));
 }
 
 export function semanticInteger(label: string, options: { min?: number } = {}) {
-  return z.preprocess((value) => {
-    if (typeof value === "string" && value.trim()) {
-      return Number(value);
-    }
-    return value;
-  }, z.number().int().min(options.min ?? Number.MIN_SAFE_INTEGER, `${label} must be >= ${options.min ?? Number.MIN_SAFE_INTEGER}.`));
+  return z.preprocess(
+    (value) => {
+      if (typeof value === "string" && value.trim()) {
+        return Number(value);
+      }
+      return value;
+    },
+    z
+      .number()
+      .int()
+      .min(options.min ?? Number.MIN_SAFE_INTEGER, `${label} must be >= ${options.min ?? Number.MIN_SAFE_INTEGER}.`)
+  );
 }
 
 export async function executeValidatedTool<TSchema extends z.ZodType<Record<string, unknown>>>(
@@ -46,7 +47,7 @@ export async function executeValidatedTool<TSchema extends z.ZodType<Record<stri
     return {
       ok: false,
       name,
-      error: `InputValidationError: ${preprocessed.error}`
+      error: `InputValidationError: ${preprocessed.error}`,
     };
   }
 
@@ -55,7 +56,7 @@ export async function executeValidatedTool<TSchema extends z.ZodType<Record<stri
     return {
       ok: false,
       name,
-      error: `InputValidationError: ${formatZodError(parsed.error)}`
+      error: `InputValidationError: ${formatZodError(parsed.error)}`,
     };
   }
 

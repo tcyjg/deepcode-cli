@@ -39,7 +39,7 @@ export function findPendingAskUserQuestion(
     return {
       messageId: message.id,
       sessionId: message.sessionId,
-      questions
+      questions,
     };
   }
 
@@ -87,9 +87,10 @@ function normalizeQuestions(raw: unknown): AskUserQuestionItem[] {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       continue;
     }
-    const question = typeof (item as { question?: unknown }).question === "string"
-      ? (item as { question: string }).question.trim()
-      : "";
+    const question =
+      typeof (item as { question?: unknown }).question === "string"
+        ? (item as { question: string }).question.trim()
+        : "";
     const rawOptions = (item as { options?: unknown }).options;
     if (!question || !Array.isArray(rawOptions) || rawOptions.length === 0) {
       continue;
@@ -100,9 +101,10 @@ function normalizeQuestions(raw: unknown): AskUserQuestionItem[] {
     if (options.length === 0) {
       continue;
     }
-    const multiSelect = typeof (item as { multiSelect?: unknown }).multiSelect === "boolean"
-      ? (item as { multiSelect: boolean }).multiSelect
-      : undefined;
+    const multiSelect =
+      typeof (item as { multiSelect?: unknown }).multiSelect === "boolean"
+        ? (item as { multiSelect: boolean }).multiSelect
+        : undefined;
     questions.push({ question, multiSelect, options });
   }
   return questions;
@@ -112,21 +114,20 @@ function normalizeOption(raw: unknown): AskUserQuestionOption | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return null;
   }
-  const label = typeof (raw as { label?: unknown }).label === "string"
-    ? (raw as { label: string }).label.trim()
-    : "";
+  const label = typeof (raw as { label?: unknown }).label === "string" ? (raw as { label: string }).label.trim() : "";
   if (!label) {
     return null;
   }
-  const description = typeof (raw as { description?: unknown }).description === "string"
-    ? (raw as { description: string }).description.trim()
-    : "";
+  const description =
+    typeof (raw as { description?: unknown }).description === "string"
+      ? (raw as { description: string }).description.trim()
+      : "";
   return {
     label,
-    description: description || undefined
+    description: description || undefined,
   };
 }
 
 function escapeAnswerPart(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"").replace(/\s+/g, " ").trim();
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\s+/g, " ").trim();
 }

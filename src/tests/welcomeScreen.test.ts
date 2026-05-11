@@ -17,7 +17,7 @@ test("formatHomeRelativePath keeps paths outside the home directory absolute", (
 test("buildWelcomeTips includes built-in slash commands and loaded skills", () => {
   const tips = buildWelcomeTips([
     { name: "loaded", path: "/skills/loaded/SKILL.md", description: "Loaded skill", isLoaded: true },
-    { name: "fresh", path: "/skills/fresh/SKILL.md", description: "Fresh skill" }
+    { name: "fresh", path: "/skills/fresh/SKILL.md", description: "Fresh skill" },
   ]);
 
   const labels = tips.map((tip) => tip.label);

@@ -33,10 +33,7 @@ function resolveReasoningEffort(value: unknown): ReasoningEffort {
   return value === "high" || value === "max" ? value : "max";
 }
 
-function resolveThinkingEnabled(
-  settings: DeepcodingSettings | null | undefined,
-  model: string
-): boolean {
+function resolveThinkingEnabled(settings: DeepcodingSettings | null | undefined, model: string): boolean {
   if (typeof settings?.thinkingEnabled === "boolean") {
     return settings.thinkingEnabled;
   }
@@ -56,8 +53,7 @@ export function resolveSettings(
   const env = settings?.env ?? {};
   const model = env.MODEL?.trim() || defaults.model;
   const notify = typeof settings?.notify === "string" ? settings.notify.trim() : "";
-  const webSearchTool =
-    typeof settings?.webSearchTool === "string" ? settings.webSearchTool.trim() : "";
+  const webSearchTool = typeof settings?.webSearchTool === "string" ? settings.webSearchTool.trim() : "";
 
   return {
     apiKey: env.API_KEY?.trim(),
@@ -67,6 +63,6 @@ export function resolveSettings(
     reasoningEffort: resolveReasoningEffort(settings?.reasoningEffort),
     debugLogEnabled: settings?.debugLogEnabled === true,
     notify: notify || undefined,
-    webSearchTool: webSearchTool || undefined
+    webSearchTool: webSearchTool || undefined,
   };
 }

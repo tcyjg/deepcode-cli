@@ -34,7 +34,8 @@
     "build": "npm run check && npm run bundle && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "tsx --test src/tests/*.test.ts",
     "test:single": "tsx --test",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "prepare": "husky"
   },
   "dependencies": {
     "chalk": "^5.6.2",
@@ -56,6 +57,8 @@
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4",
     "prettier": "^3.8.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",

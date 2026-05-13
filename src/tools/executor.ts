@@ -1,11 +1,19 @@
 import type OpenAI from "openai";
 import type { ReasoningEffort } from "../settings";
-import { handleAskUserQuestionTool } from "./ask-user-question-handler";
-import { handleBashTool } from "./bash-handler";
-import { handleEditTool } from "./edit-handler";
-import { handleReadTool } from "./read-handler";
-import { handleWebSearchTool } from "./web-search-handler";
-import { handleWriteTool } from "./write-handler";
+import { canExecuteAskUserQuestionTool, handleAskUserQuestionTool } from "./ask-user-question-handler";
+import { canExecuteBashTool, handleBashTool } from "./bash-handler";
+import { canExecuteEditTool, handleEditTool } from "./edit-handler";
+import { canExecuteReadTool, handleReadTool } from "./read-handler";
+import { canExecuteWebSearchTool, handleWebSearchTool } from "./web-search-handler";
+import { canExecuteWriteTool, handleWriteTool } from "./write-handler";
+import {
+  buildSafetyApprovalToolResult,
+  buildSafetyDeniedToolResult,
+  loadProjectPermissionPolicy,
+  type PermissionContext,
+  type SafetyDecision,
+  type SafetyApprovalRequest,
+} from "./safety-hooks";
 
 export type CreateOpenAIClient = () => {
   client: OpenAI | null;
@@ -41,6 +49,8 @@ export type ToolExecutionHooks = {
   onProcessStart?: (processId: string | number, command: string) => void;
   onProcessExit?: (processId: string | number) => void;
   shouldStop?: () => boolean;
+  onSafetyApprovalRequested?: (request: SafetyApprovalRequest, toolCall: ToolCall) => void;
+  consumeSafetyApproval?: (request: SafetyApprovalRequest) => "approved" | "denied" | "missing";
 };
 
 export type ToolExecutionResult = {
@@ -64,6 +74,13 @@ export type ToolHandler = (
   context: ToolExecutionContext
 ) => Promise<ToolExecutionResult>;
 
+export type ToolPermissionCheck = (args: Record<string, unknown>, context: PermissionContext) => SafetyDecision;
+
+type ToolDefinition = {
+  handler: ToolHandler;
+  canExecute: ToolPermissionCheck;
+};
+
 export type ToolCallExecution = {
   toolCallId: string;
   content: string;
@@ -73,7 +90,7 @@ export type ToolCallExecution = {
 export class ToolExecutor {
   private readonly projectRoot: string;
   private readonly createOpenAIClient?: CreateOpenAIClient;
-  private readonly toolHandlers = new Map<string, ToolHandler>();
+  private readonly tools = new Map<string, ToolDefinition>();
 
   constructor(projectRoot: string, createOpenAIClient?: CreateOpenAIClient) {
     this.projectRoot = projectRoot;
@@ -109,12 +126,15 @@ export class ToolExecutor {
   }
 
   private registerToolHandlers(): void {
-    this.toolHandlers.set("bash", handleBashTool);
-    this.toolHandlers.set("read", handleReadTool);
-    this.toolHandlers.set("write", handleWriteTool);
-    this.toolHandlers.set("edit", handleEditTool);
-    this.toolHandlers.set("AskUserQuestion", handleAskUserQuestionTool);
-    this.toolHandlers.set("WebSearch", handleWebSearchTool);
+    this.tools.set("bash", { handler: handleBashTool, canExecute: canExecuteBashTool });
+    this.tools.set("read", { handler: handleReadTool, canExecute: canExecuteReadTool });
+    this.tools.set("write", { handler: handleWriteTool, canExecute: canExecuteWriteTool });
+    this.tools.set("edit", { handler: handleEditTool, canExecute: canExecuteEditTool });
+    this.tools.set("AskUserQuestion", {
+      handler: handleAskUserQuestionTool,
+      canExecute: canExecuteAskUserQuestionTool,
+    });
+    this.tools.set("WebSearch", { handler: handleWebSearchTool, canExecute: canExecuteWebSearchTool });
   }
 
   private parseToolCall(toolCall: unknown): ToolCall | null {
@@ -159,8 +179,8 @@ export class ToolExecutor {
     hooks?: ToolExecutionHooks
   ): Promise<ToolExecutionResult> {
     const toolName = toolCall.function.name;
-    const handler = this.toolHandlers.get(toolName);
-    if (!handler) {
+    const tool = this.tools.get(toolName);
+    if (!tool) {
       return {
         ok: false,
         name: toolName,
@@ -177,8 +197,34 @@ export class ToolExecutor {
       };
     }
 
+    const safetyDecision = tool.canExecute(parsedArgs.args, this.buildPermissionContext());
+    if (safetyDecision.action === "block") {
+      return {
+        ok: false,
+        name: toolName,
+        error: `Blocked by safety hook: ${safetyDecision.reason}`,
+        metadata: {
+          safety_hook: {
+            action: "blocked",
+            reason: safetyDecision.reason,
+          },
+        },
+      };
+    }
+
+    if (safetyDecision.action === "confirm") {
+      const approvalState = hooks?.consumeSafetyApproval?.(safetyDecision.request) ?? "missing";
+      if (approvalState === "denied") {
+        return buildSafetyDeniedToolResult(safetyDecision.request);
+      }
+      if (approvalState !== "approved") {
+        hooks?.onSafetyApprovalRequested?.(safetyDecision.request, toolCall);
+        return buildSafetyApprovalToolResult(safetyDecision.request);
+      }
+    }
+
     try {
-      return await handler(parsedArgs.args, {
+      return await tool.handler(parsedArgs.args, {
         sessionId,
         projectRoot: this.projectRoot,
         toolCall,
@@ -194,6 +240,13 @@ export class ToolExecutor {
         error: message,
       };
     }
+  }
+
+  private buildPermissionContext(): PermissionContext {
+    return {
+      projectRoot: this.projectRoot,
+      policy: loadProjectPermissionPolicy(this.projectRoot),
+    };
   }
 
   private parseToolArguments(

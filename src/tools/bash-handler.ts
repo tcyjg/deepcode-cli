@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { evaluateBashToolSafety, type PermissionContext, type SafetyDecision } from "./safety-hooks";
 import {
   buildDisableExtglobCommand,
   buildShellEnv,
@@ -23,6 +24,10 @@ type ToolCommandResult = {
   shellPath?: string;
   startCwd?: string;
 };
+
+export function canExecuteBashTool(args: Record<string, unknown>, context: PermissionContext): SafetyDecision {
+  return evaluateBashToolSafety(args, context);
+}
 
 export async function handleBashTool(
   args: Record<string, unknown>,

@@ -3,6 +3,7 @@ import * as path from "path";
 import ignore from "ignore";
 import type { ToolExecutionContext, ToolExecutionFollowUpMessage, ToolExecutionResult } from "./executor";
 import { readTextFileWithMetadata } from "./file-utils";
+import { evaluateReadToolSafety, type PermissionContext, type SafetyDecision } from "./safety-hooks";
 import { createSnippet, isAbsoluteFilePath, markFileRead, normalizeFilePath } from "./state";
 
 const DEFAULT_LINE_LIMIT = 2000;
@@ -34,6 +35,10 @@ const DEFAULT_GITIGNORE = [
   "*.war",
   "target/",
 ];
+
+export function canExecuteReadTool(args: Record<string, unknown>, context: PermissionContext): SafetyDecision {
+  return evaluateReadToolSafety(args, context);
+}
 
 type PageRange = {
   start: number;

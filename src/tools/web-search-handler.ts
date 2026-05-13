@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { spawn } from "child_process";
 import type OpenAI from "openai";
 import type { CreateOpenAIClient, ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { evaluateGenericToolSafety, type PermissionContext, type SafetyDecision } from "./safety-hooks";
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
@@ -29,6 +30,10 @@ type LLMClientContext = {
   webSearchTool?: string;
   machineId?: string;
 };
+
+export function canExecuteWebSearchTool(args: Record<string, unknown>, context: PermissionContext): SafetyDecision {
+  return evaluateGenericToolSafety("WebSearch", args, context);
+}
 
 export async function handleWebSearchTool(
   args: Record<string, unknown>,

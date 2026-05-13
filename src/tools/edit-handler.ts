@@ -2,6 +2,7 @@ import * as fs from "fs";
 import { z } from "zod";
 import { buildThinkingRequestOptions } from "../openai-thinking";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { evaluateEditToolSafety, type PermissionContext, type SafetyDecision } from "./safety-hooks";
 import { buildDiffPreview, hasFileChangedSinceState, readTextFileWithMetadata, writeTextFile } from "./file-utils";
 import { executeValidatedTool, semanticBoolean } from "./runtime";
 import {
@@ -74,6 +75,10 @@ const editSchema = z.strictObject({
     return value;
   }, z.number().int().min(1, "expected_occurrences must be >= 1.").optional()),
 });
+
+export function canExecuteEditTool(args: Record<string, unknown>, context: PermissionContext): SafetyDecision {
+  return evaluateEditToolSafety(args, context);
+}
 
 export async function handleEditTool(
   args: Record<string, unknown>,

@@ -1,4 +1,5 @@
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { evaluateGenericToolSafety, type PermissionContext, type SafetyDecision } from "./safety-hooks";
 
 type AskUserQuestionOption = {
   label: string;
@@ -15,6 +16,13 @@ type AskUserQuestionMetadata = {
   kind: "ask_user_question";
   questions: AskUserQuestionItem[];
 };
+
+export function canExecuteAskUserQuestionTool(
+  args: Record<string, unknown>,
+  context: PermissionContext
+): SafetyDecision {
+  return evaluateGenericToolSafety("AskUserQuestion", args, context);
+}
 
 export async function handleAskUserQuestionTool(
   args: Record<string, unknown>,

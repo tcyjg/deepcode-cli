@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import { z } from "zod";
 import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { evaluateWriteToolSafety, type PermissionContext, type SafetyDecision } from "./safety-hooks";
 import {
   buildDiffPreview,
   ensureParentDirectory,
@@ -24,6 +25,10 @@ type WriteRepairMetadata = {
   input_repaired: boolean;
   repair_kind: "json-stringify-content";
 } | null;
+
+export function canExecuteWriteTool(args: Record<string, unknown>, context: PermissionContext): SafetyDecision {
+  return evaluateWriteToolSafety(args, context);
+}
 
 export async function handleWriteTool(
   args: Record<string, unknown>,
